@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import SideChatbot from "@/app/components/SideChatbot";
 import type {
   AdaptiveQuestion,
   DiagnoseResponse,
@@ -171,6 +172,7 @@ export default function StuckApp() {
   const [errorMessage, setErrorMessage] = useState("");
   const [notice, setNotice] = useState("");
   const [historyHydrated, setHistoryHydrated] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const currentQuestion = questionQueue[currentQuestionIndex] ?? null;
 
@@ -427,6 +429,10 @@ export default function StuckApp() {
   }
 
   const recentHistory = history.slice(0, 6);
+  const diagnosisLabel = diagnosis
+    ? STUCK_TYPE_LABELS[diagnosis.primaryType]
+    : null;
+  const firstAction = plan?.firstAction ?? null;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -1219,6 +1225,18 @@ export default function StuckApp() {
           ) : null}
         </section>
       </div>
+
+      <SideChatbot
+        isOpen={chatOpen}
+        onOpen={() => setChatOpen(true)}
+        onClose={() => setChatOpen(false)}
+        subject={context.subject}
+        assignmentType={context.assignmentType}
+        diagnosisLabel={diagnosisLabel}
+        firstAction={firstAction}
+        onOpenDiagnosisTab={() => setActiveTab("diagnosis")}
+        onOpenPlanTab={() => setActiveTab("result")}
+      />
     </div>
   );
 }

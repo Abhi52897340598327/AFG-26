@@ -9,17 +9,17 @@
     {
       "id": "home_trigger",
       "description": "Home screen with I'M STUCK entry button",
-      "line_hint": "screen === \"home\""
+      "line_hint": "activeTab === \"home\""
     },
     {
       "id": "diagnosis_questions",
       "description": "Adaptive question card and option buttons",
-      "line_hint": "screen === \"diagnosis\""
+      "line_hint": "activeTab === \"diagnosis\""
     },
     {
       "id": "result_plan",
       "description": "Diagnosis summary, interventions, timer, outcome save",
-      "line_hint": "screen === \"result\""
+      "line_hint": "activeTab === \"result\""
     },
     {
       "id": "context_sidebar",
@@ -30,6 +30,11 @@
       "id": "insight_sidebar",
       "description": "Insights and recent sessions",
       "line_hint": "Insights"
+    },
+    {
+      "id": "side_chatbot",
+      "description": "Right-edge chatbot tab/drawer adapted from mobile chat UI",
+      "line_hint": "SideChatbot"
     }
   ],
   "assets_folder": "/Users/abhiraamvenigalla/AFG-26/public/images/design-imports"
