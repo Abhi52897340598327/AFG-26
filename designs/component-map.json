@@ -1,0 +1,36 @@
+{
+  "page": "/Users/abhiraamvenigalla/AFG-26/app/page.tsx",
+  "sections": [
+    {
+      "id": "header_shell",
+      "description": "Top navigation and app title",
+      "line_hint": "header className"
+    },
+    {
+      "id": "home_trigger",
+      "description": "Home screen with I'M STUCK entry button",
+      "line_hint": "screen === \"home\""
+    },
+    {
+      "id": "diagnosis_questions",
+      "description": "Adaptive question card and option buttons",
+      "line_hint": "screen === \"diagnosis\""
+    },
+    {
+      "id": "result_plan",
+      "description": "Diagnosis summary, interventions, timer, outcome save",
+      "line_hint": "screen === \"result\""
+    },
+    {
+      "id": "context_sidebar",
+      "description": "Subject, assignment, time/energy/panic controls",
+      "line_hint": "Session Context"
+    },
+    {
+      "id": "insight_sidebar",
+      "description": "Insights and recent sessions",
+      "line_hint": "Insights"
+    }
+  ],
+  "assets_folder": "/Users/abhiraamvenigalla/AFG-26/public/images/design-imports"
+}

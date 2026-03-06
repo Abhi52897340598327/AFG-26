@@ -1,253 +1,1224 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import {
-  Send,
-  Plus,
-  MessageSquare,
-  User,
-  Bot,
-  Sidebar as SidebarIcon,
-  Search,
-  MoreHorizontal,
-  Settings,
-  ArrowUpCircle,
-  Paperclip
-} from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
+import type {
+  AdaptiveQuestion,
+  DiagnoseResponse,
+  DiagnosticAnswers,
+  DiagnosticContext,
+  DiagnosisResult,
+  InterventionPlan,
+  SessionOutcome,
+  SessionRecord,
+  StuckType,
+  StudentProfile,
+  TrendInsight,
+} from "@/model";
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+type AppTab =
+  | "home"
+  | "context"
+  | "diagnosis"
+  | "result"
+  | "insights"
+  | "history";
+
+const STORAGE_KEY = "stuck_sessions_v1";
+const MAX_HISTORY = 300;
+
+const QUESTION_TITLES: Record<AdaptiveQuestion["id"], string> = {
+  understandsQuestion: "Understanding",
+  canSubmitBadInFiveMinutes: "Rough Submission",
+  strongestEmotion: "Emotion",
+  taskScope: "Task Scope",
+  gradeWorry: "Grade Worry",
+};
+
+const STUCK_TYPE_LABELS: Record<StuckType, string> = {
+  confusion: "Confusion Stuck",
+  ambiguity: "Ambiguity Stuck",
+  fear: "Fear Stuck",
+  overwhelm: "Overwhelm Stuck",
+  exhaustion: "Exhaustion Stuck",
+  perfection_loop: "Perfection Loop Stuck",
+};
+
+const OUTCOME_LABELS: Record<SessionOutcome, string> = {
+  started: "Started",
+  finished: "Finished",
+  gave_up: "Gave Up",
+};
+
+const TAB_LABELS: Record<AppTab, string> = {
+  home: "Home",
+  context: "Context",
+  diagnosis: "Diagnosis",
+  result: "Plan",
+  insights: "Insights",
+  history: "History",
+};
+
+const DEFAULT_CONTEXT: Required<
+  Pick<
+    DiagnosticContext,
+    | "subject"
+    | "assignmentType"
+    | "timeStuckMinutes"
+    | "tasksOpenCount"
+    | "energyLevel"
+    | "panicLevel"
+    | "repeatedRereading"
+    | "excessiveEditing"
+  >
+> = {
+  subject: "",
+  assignmentType: "Homework",
+  timeStuckMinutes: 30,
+  tasksOpenCount: 1,
+  energyLevel: 3,
+  panicLevel: 3,
+  repeatedRereading: false,
+  excessiveEditing: false,
+};
+
+function asCompleteAnswers(
+  answers: Partial<DiagnosticAnswers>,
+): DiagnosticAnswers | null {
+  if (
+    answers.understandsQuestion &&
+    answers.canSubmitBadInFiveMinutes &&
+    answers.strongestEmotion &&
+    answers.taskScope &&
+    answers.gradeWorry
+  ) {
+    return answers as DiagnosticAnswers;
+  }
+
+  return null;
 }
 
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
+function formatTimer(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, totalSeconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${seconds
+    .toString()
+    .padStart(2, "0")}`;
 }
 
-export default function ChatGPTWeb() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content: "Hello! I'm your AI assistant. How can I help you today?",
-      timestamp: new Date(),
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
+function loadStoredHistory(): SessionRecord[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    return [];
+  }
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input.trim(),
-      timestamp: new Date(),
-    };
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
 
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setIsTyping(true);
+    return parsed as SessionRecord[];
+  } catch {
+    return [];
+  }
+}
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsTyping(false);
-    }, 1500);
-  };
+async function requestDiagnosis(
+  answers: Partial<DiagnosticAnswers>,
+  context: DiagnosticContext,
+  history: SessionRecord[],
+): Promise<DiagnoseResponse> {
+  const response = await fetch("/api/stuck/diagnose", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ answers, context, history }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Diagnosis request failed.");
+  }
+
+  return (await response.json()) as DiagnoseResponse;
+}
+
+export default function StuckApp() {
+  const [activeTab, setActiveTab] = useState<AppTab>("home");
+  const [answers, setAnswers] = useState<Partial<DiagnosticAnswers>>({});
+  const [questionQueue, setQuestionQueue] = useState<AdaptiveQuestion[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [context, setContext] = useState(DEFAULT_CONTEXT);
+  const [history, setHistory] = useState<SessionRecord[]>([]);
+  const [diagnosis, setDiagnosis] = useState<DiagnosisResult | null>(null);
+  const [plan, setPlan] = useState<InterventionPlan | null>(null);
+  const [insights, setInsights] = useState<TrendInsight[]>([]);
+  const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [selectedOutcome, setSelectedOutcome] =
+    useState<SessionOutcome>("started");
+  const [completedStepIds, setCompletedStepIds] = useState<string[]>([]);
+  const [activeTimerStepId, setActiveTimerStepId] = useState<string | null>(
+    null,
+  );
+  const [timerSecondsLeft, setTimerSecondsLeft] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [notice, setNotice] = useState("");
+  const [historyHydrated, setHistoryHydrated] = useState(false);
+
+  const currentQuestion = questionQueue[currentQuestionIndex] ?? null;
+
+  const answeredCount = useMemo(
+    () => questionQueue.filter((question) => answers[question.id] !== undefined).length,
+    [answers, questionQueue],
+  );
+
+  const progressPercent = useMemo(() => {
+    if (questionQueue.length === 0) {
+      return 0;
+    }
+    return Math.round((answeredCount / questionQueue.length) * 100);
+  }, [answeredCount, questionQueue.length]);
+
+  const activeStep = useMemo(
+    () => plan?.steps.find((step) => step.id === activeTimerStepId) ?? null,
+    [activeTimerStepId, plan],
+  );
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const storedHistory = loadStoredHistory();
+    setHistory(storedHistory);
+    setHistoryHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!historyHydrated || typeof window === "undefined") {
+      return;
     }
-  }, [messages, isTyping]);
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+  }, [history, historyHydrated]);
+
+  useEffect(() => {
+    if (!timerRunning) {
+      return;
+    }
+
+    const timerId = window.setInterval(() => {
+      setTimerSecondsLeft((previous) => {
+        if (previous <= 1) {
+          setTimerRunning(false);
+          return 0;
+        }
+        return previous - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timerId);
+  }, [timerRunning]);
+
+  function resetResultState(): void {
+    setDiagnosis(null);
+    setPlan(null);
+    setInsights([]);
+    setProfile(null);
+    setSelectedOutcome("started");
+    setCompletedStepIds([]);
+    setActiveTimerStepId(null);
+    setTimerSecondsLeft(0);
+    setTimerRunning(false);
+  }
+
+  function applyDiagnosisResponse(
+    response: Extract<DiagnoseResponse, { status: "diagnosed" }>,
+  ): void {
+    setDiagnosis(response.diagnosis);
+    setPlan(response.plan);
+    setInsights(response.insights);
+    setProfile(response.profile);
+    setSelectedOutcome("started");
+    setCompletedStepIds([]);
+    setActiveTimerStepId(null);
+    setTimerSecondsLeft(0);
+    setTimerRunning(false);
+  }
+
+  async function beginDiagnosis(): Promise<void> {
+    setErrorMessage("");
+    setNotice("");
+    setLoading(true);
+    setAnswers({});
+    setQuestionQueue([]);
+    setCurrentQuestionIndex(0);
+    resetResultState();
+
+    try {
+      const response = await requestDiagnosis({}, context, history);
+      if (response.status === "needs_more_answers") {
+        setQuestionQueue(response.questionQueue);
+        setCurrentQuestionIndex(0);
+        setActiveTab("diagnosis");
+        return;
+      }
+
+      applyDiagnosisResponse(response);
+      setActiveTab("result");
+    } catch {
+      setErrorMessage("Could not start diagnosis. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function updateAnswer(questionId: AdaptiveQuestion["id"], value: string): void {
+    setErrorMessage("");
+    setAnswers((previous) => ({ ...previous, [questionId]: value }));
+  }
+
+  async function handleNextQuestion(): Promise<void> {
+    if (!currentQuestion) {
+      return;
+    }
+
+    if (answers[currentQuestion.id] === undefined) {
+      setErrorMessage("Select an option to continue.");
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage("");
+
+    try {
+      const response = await requestDiagnosis(answers, context, history);
+
+      if (response.status === "needs_more_answers") {
+        setQuestionQueue(response.questionQueue);
+        const nextUnansweredIndex = response.questionQueue.findIndex(
+          (question) => answers[question.id] === undefined,
+        );
+        const fallbackIndex = Math.min(
+          currentQuestionIndex + 1,
+          response.questionQueue.length - 1,
+        );
+        setCurrentQuestionIndex(
+          nextUnansweredIndex === -1 ? fallbackIndex : nextUnansweredIndex,
+        );
+        return;
+      }
+
+      applyDiagnosisResponse(response);
+      setActiveTab("result");
+    } catch {
+      setErrorMessage("Could not process this answer. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handlePreviousQuestion(): void {
+    setErrorMessage("");
+    setCurrentQuestionIndex((previous) => Math.max(0, previous - 1));
+  }
+
+  function toggleStepComplete(stepId: string): void {
+    setCompletedStepIds((previous) =>
+      previous.includes(stepId)
+        ? previous.filter((id) => id !== stepId)
+        : [...previous, stepId],
+    );
+  }
+
+  function startStepTimer(stepId: string, minutes: number): void {
+    setActiveTimerStepId(stepId);
+    setTimerSecondsLeft(minutes * 60);
+    setTimerRunning(true);
+  }
+
+  function toggleTimerRunning(): void {
+    if (!activeStep) {
+      return;
+    }
+    setTimerRunning((previous) => !previous);
+  }
+
+  function resetTimer(): void {
+    if (!activeStep) {
+      setActiveTimerStepId(null);
+      setTimerSecondsLeft(0);
+      setTimerRunning(false);
+      return;
+    }
+
+    setTimerSecondsLeft(activeStep.minutes * 60);
+    setTimerRunning(false);
+  }
+
+  async function saveSession(): Promise<void> {
+    const completeAnswers = asCompleteAnswers(answers);
+    if (!diagnosis || !plan || !completeAnswers) {
+      setErrorMessage("Diagnosis is incomplete. Finish diagnosis before saving.");
+      return;
+    }
+
+    setSaving(true);
+    setErrorMessage("");
+    setNotice("");
+
+    const now = new Date().toISOString();
+    const interventionUsed =
+      completedStepIds.length > 0
+        ? completedStepIds.join(",")
+        : `${plan.stuckType}:initial`;
+
+    const sessionRecord: SessionRecord = {
+      id:
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `session-${Date.now()}`,
+      userId: "local-user",
+      createdAt: now,
+      subject: context.subject.trim() || "Unknown Subject",
+      assignmentType: context.assignmentType.trim() || "Unknown Assignment",
+      stuckType: diagnosis.primaryType,
+      emotion: completeAnswers.strongestEmotion,
+      timeStuckMinutes: context.timeStuckMinutes,
+      interventionUsed,
+      outcome: selectedOutcome,
+    };
+
+    const updatedHistory = [sessionRecord, ...history].slice(0, MAX_HISTORY);
+    setHistory(updatedHistory);
+
+    try {
+      const refreshed = await requestDiagnosis(completeAnswers, context, updatedHistory);
+      if (refreshed.status === "diagnosed") {
+        setInsights(refreshed.insights);
+        setProfile(refreshed.profile);
+      }
+      setNotice(
+        `Session saved as "${OUTCOME_LABELS[selectedOutcome]}". History entries: ${updatedHistory.length}.`,
+      );
+    } catch {
+      setErrorMessage("Session saved locally, but insight refresh failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function resetToHome(): void {
+    setActiveTab("home");
+    setAnswers({});
+    setQuestionQueue([]);
+    setCurrentQuestionIndex(0);
+    resetResultState();
+    setErrorMessage("");
+    setNotice("");
+  }
+
+  function clearHistory(): void {
+    setHistory([]);
+    setNotice("History cleared.");
+  }
+
+  const recentHistory = history.slice(0, 6);
 
   return (
-    <div className="flex h-screen w-full bg-[#212121] text-white overflow-hidden font-sans">
-      {/* Sidebar */}
-      <motion.aside
-        initial={false}
-        animate={{ width: isSidebarOpen ? 260 : 0, opacity: isSidebarOpen ? 1 : 0 }}
-        className="bg-[#171717] border-r border-white/10 flex flex-col overflow-hidden"
-      >
-        <div className="p-3 flex flex-col h-full">
-          <button className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-white/5 transition-colors text-sm font-medium border border-white/10 mb-4">
-            <Plus size={16} />
-            <span>New chat</span>
-          </button>
-
-          <div className="flex-1 overflow-y-auto space-y-1">
-            <div className="px-3 py-2 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-              Recent
-            </div>
-            {["Next.js App Setup", "ChatGPT Interface Design", "API Integration Ideas"].map((chat, i) => (
-              <button key={i} className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-white/10 transition-colors text-sm text-gray-300 truncate group">
-                <MessageSquare size={14} className="shrink-0" />
-                <span className="truncate flex-1 text-left">{chat}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-auto pt-4 border-t border-white/10 space-y-1">
-            <button className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-white/10 transition-colors text-sm text-gray-300">
-              <Settings size={16} />
-              <span>Settings</span>
-            </button>
-            <div className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-white/10 transition-colors text-sm text-gray-300">
-              <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-[10px] font-bold">
-                JD
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-8 md:py-8">
+        <header className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 backdrop-blur">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
+              <Image
+                src="/images/hero-pattern.svg"
+                alt="Stuck hero"
+                width={72}
+                height={72}
+                className="rounded-xl border border-slate-700"
+              />
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                  Stuck
+                </h1>
+                <p className="text-sm text-slate-300 md:text-base">
+                  Diagnostic + intervention engine for academic paralysis.
+                </p>
               </div>
-              <span className="flex-1 text-left font-medium">John Doe</span>
-              <MoreHorizontal size={14} className="text-gray-500" />
-            </div>
-          </div>
-        </div>
-      </motion.aside>
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col relative bg-[#212121]">
-        {/* Header */}
-        <header className="h-14 flex items-center justify-between px-4 border-b border-white/5 sticky top-0 z-10 bg-[#212121]/80 backdrop-blur-md">
-          <div className="flex items-center gap-4">
-            {!isSidebarOpen && (
-              <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="p-2 hover:bg-white/5 rounded-md transition-colors"
-              >
-                <SidebarIcon size={18} />
-              </button>
-            )}
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-200">Stuck 1.0</span>
             </div>
           </div>
         </header>
 
-        {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden pt-4 custom-scrollbar">
-          <div className="max-w-3xl mx-auto w-full px-4 space-y-8 pb-32">
-            <AnimatePresence initial={false}>
-              {messages.map((msg) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={cn(
-                    "flex gap-4 group",
-                    msg.role === "user" ? "flex-row-reverse" : ""
-                  )}
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(TAB_LABELS) as AppTab[]).map((tabKey) => {
+              const disabled =
+                tabKey === "result" && (diagnosis === null || plan === null);
+              const selected = activeTab === tabKey;
+
+              return (
+                <button
+                  key={tabKey}
+                  type="button"
+                  onClick={() => setActiveTab(tabKey)}
+                  disabled={disabled}
+                  className={`rounded-lg border px-3 py-2 text-sm ${
+                    selected
+                      ? "border-cyan-400 bg-cyan-500/20"
+                      : "border-slate-700 hover:border-slate-500"
+                  } disabled:cursor-not-allowed disabled:opacity-50`}
                 >
-                  <div className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1",
-                    msg.role === "assistant" ? "bg-[#10a37f]" : "bg-[#3b82f6]"
-                  )}>
-                    {msg.role === "assistant" ? <Bot size={18} /> : <User size={18} />}
-                  </div>
-                  <div className={cn(
-                    "flex flex-col max-w-[85%]",
-                    msg.role === "user" ? "items-end" : "items-start"
-                  )}>
-                    <div className={cn(
-                      "px-4 py-3 rounded-2xl text-[15px] leading-relaxed shadow-sm",
-                      msg.role === "user"
-                        ? "bg-[#3b82f6] text-white rounded-tr-none"
-                        : "bg-[#2f2f2f] text-gray-100 rounded-tl-none"
-                    )}>
-                      {msg.content}
-                    </div>
-                    <span className="text-[10px] text-gray-500 mt-2 px-1">
-                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+                  {TAB_LABELS[tabKey]}
+                </button>
+              );
+            })}
 
-            {isTyping && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-4">
-                <div className="w-8 h-8 rounded-full bg-[#10a37f] flex items-center justify-center shrink-0">
-                  <Bot size={18} />
-                </div>
-                <div className="bg-[#2f2f2f] px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
-              </motion.div>
-            )}
+            <button
+              type="button"
+              onClick={clearHistory}
+              className="rounded-lg border border-rose-700 px-3 py-2 text-sm text-rose-200 hover:border-rose-500"
+            >
+              Clear History
+            </button>
           </div>
         </div>
 
-        {/* Input Area */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#212121] via-[#212121] to-transparent">
-          <div className="max-w-3xl mx-auto relative group">
-            <div className="bg-[#2f2f2f] border border-white/10 rounded-[28px] p-2 flex items-end shadow-2xl transition-all focus-within:border-white/20">
-              <button className="p-3 text-gray-400 hover:text-white transition-colors">
-                <Paperclip size={20} />
-              </button>
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
+        {errorMessage ? (
+          <div className="rounded-xl border border-rose-700 bg-rose-950/60 px-4 py-3 text-sm text-rose-200">
+            {errorMessage}
+          </div>
+        ) : null}
+        {notice ? (
+          <div className="rounded-xl border border-emerald-700 bg-emerald-950/50 px-4 py-3 text-sm text-emerald-200">
+            {notice}
+          </div>
+        ) : null}
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 md:p-6">
+          {activeTab === "home" ? (
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <h2 className="text-xl font-semibold">Start When You Freeze</h2>
+                <p className="max-w-3xl text-sm text-slate-300 md:text-base">
+                  The UI is now organized into tabs. Set details in{" "}
+                  <strong>Context</strong>, answer the adaptive questions in{" "}
+                  <strong>Diagnosis</strong>, then follow your intervention in{" "}
+                  <strong>Plan</strong>.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                <Image
+                  src="/images/diagnosis-flow.svg"
+                  alt="Diagnosis flow diagram"
+                  width={920}
+                  height={220}
+                  className="h-auto w-full rounded-lg border border-slate-800"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={beginDiagnosis}
+                  disabled={loading}
+                  className="rounded-xl bg-cyan-400 px-6 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? "Starting..." : "I'M STUCK"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("context")}
+                  className="rounded-xl border border-slate-700 px-6 py-3 text-sm hover:border-slate-500"
+                >
+                  Go To Context Tab
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setContext((previous) => ({
+                      ...previous,
+                      subject: "Chemistry",
+                      assignmentType: "Homework",
+                      timeStuckMinutes: 45,
+                      tasksOpenCount: 3,
+                      energyLevel: 3,
+                      panicLevel: 4,
+                      repeatedRereading: true,
+                      excessiveEditing: false,
+                    }))
                   }
-                }}
-                placeholder="Message ChatGPT..."
-                className="flex-1 bg-transparent border-none outline-none resize-none px-2 py-3 text-[15px] max-h-48 custom-scrollbar placeholder:text-gray-500"
-                rows={1}
-                style={{ height: 'auto' }}
-              />
-              <button
-                onClick={handleSend}
-                disabled={!input.trim()}
-                className={cn(
-                  "p-2 rounded-full mb-1 transition-all duration-200",
-                  input.trim()
-                    ? "bg-white text-black hover:bg-gray-200"
-                    : "bg-gray-700 text-gray-500 cursor-not-allowed"
-                )}
-              >
-                <ArrowUpCircle size={28} />
-              </button>
+                  className="rounded-xl border border-slate-700 px-6 py-3 text-sm hover:border-slate-500"
+                >
+                  Load Demo Context
+                </button>
+              </div>
             </div>
-            <div className="text-[11px] text-gray-500 text-center mt-3">
-              ChatGPT can make mistakes. Check important info.
-            </div>
-          </div>
-        </div>
-      </main>
+          ) : null}
 
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.2);
-        }
-      `}</style>
+          {activeTab === "context" ? (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+                Session Context
+              </h3>
+
+              <div>
+                <label htmlFor="subject" className="text-xs text-slate-400">
+                  Subject
+                </label>
+                <input
+                  id="subject"
+                  value={context.subject}
+                  onChange={(event) =>
+                    setContext((previous) => ({
+                      ...previous,
+                      subject: event.target.value,
+                    }))
+                  }
+                  placeholder="e.g. Chemistry"
+                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none ring-cyan-300 focus:ring"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="assignment" className="text-xs text-slate-400">
+                  Assignment Type
+                </label>
+                <input
+                  id="assignment"
+                  value={context.assignmentType}
+                  onChange={(event) =>
+                    setContext((previous) => ({
+                      ...previous,
+                      assignmentType: event.target.value,
+                    }))
+                  }
+                  placeholder="Homework / Essay / Lab"
+                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none ring-cyan-300 focus:ring"
+                />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {["Homework", "Essay", "Lab", "Problem Set", "Exam Prep"].map(
+                    (preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() =>
+                          setContext((previous) => ({
+                            ...previous,
+                            assignmentType: preset,
+                          }))
+                        }
+                        className="rounded-md border border-slate-700 px-2 py-1 text-xs hover:border-slate-500"
+                      >
+                        {preset}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-slate-400">Time Stuck (minutes)</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setContext((previous) => ({
+                        ...previous,
+                        timeStuckMinutes: Math.max(0, previous.timeStuckMinutes - 5),
+                      }))
+                    }
+                    className="rounded-md border border-slate-700 px-3 py-1 text-sm hover:border-slate-500"
+                  >
+                    -
+                  </button>
+                  <span className="min-w-14 text-center text-sm">
+                    {context.timeStuckMinutes}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setContext((previous) => ({
+                        ...previous,
+                        timeStuckMinutes: Math.min(300, previous.timeStuckMinutes + 5),
+                      }))
+                    }
+                    className="rounded-md border border-slate-700 px-3 py-1 text-sm hover:border-slate-500"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-slate-400">Open Tasks</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setContext((previous) => ({
+                        ...previous,
+                        tasksOpenCount: Math.max(1, previous.tasksOpenCount - 1),
+                      }))
+                    }
+                    className="rounded-md border border-slate-700 px-3 py-1 text-sm hover:border-slate-500"
+                  >
+                    -
+                  </button>
+                  <span className="min-w-14 text-center text-sm">
+                    {context.tasksOpenCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setContext((previous) => ({
+                        ...previous,
+                        tasksOpenCount: Math.min(20, previous.tasksOpenCount + 1),
+                      }))
+                    }
+                    className="rounded-md border border-slate-700 px-3 py-1 text-sm hover:border-slate-500"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-slate-400">Energy Level</p>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <button
+                      key={`energy-${value}`}
+                      type="button"
+                      onClick={() =>
+                        setContext((previous) => ({
+                          ...previous,
+                          energyLevel: value as 1 | 2 | 3 | 4 | 5,
+                        }))
+                      }
+                      className={`rounded-md border px-2 py-1 text-xs ${
+                        context.energyLevel === value
+                          ? "border-cyan-400 bg-cyan-500/20"
+                          : "border-slate-700 hover:border-slate-500"
+                      }`}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-slate-400">Panic Level</p>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <button
+                      key={`panic-${value}`}
+                      type="button"
+                      onClick={() =>
+                        setContext((previous) => ({
+                          ...previous,
+                          panicLevel: value as 1 | 2 | 3 | 4 | 5,
+                        }))
+                      }
+                      className={`rounded-md border px-2 py-1 text-xs ${
+                        context.panicLevel === value
+                          ? "border-cyan-400 bg-cyan-500/20"
+                          : "border-slate-700 hover:border-slate-500"
+                      }`}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setContext((previous) => ({
+                      ...previous,
+                      repeatedRereading: !previous.repeatedRereading,
+                    }))
+                  }
+                  className={`rounded-md border px-3 py-2 text-xs text-left ${
+                    context.repeatedRereading
+                      ? "border-cyan-400 bg-cyan-500/20"
+                      : "border-slate-700 hover:border-slate-500"
+                  }`}
+                >
+                  Repeated rereading: {context.repeatedRereading ? "Yes" : "No"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setContext((previous) => ({
+                      ...previous,
+                      excessiveEditing: !previous.excessiveEditing,
+                    }))
+                  }
+                  className={`rounded-md border px-3 py-2 text-xs text-left ${
+                    context.excessiveEditing
+                      ? "border-cyan-400 bg-cyan-500/20"
+                      : "border-slate-700 hover:border-slate-500"
+                  }`}
+                >
+                  Excessive editing: {context.excessiveEditing ? "Yes" : "No"}
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={beginDiagnosis}
+                  disabled={loading}
+                  className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? "Starting..." : "Start Diagnosis"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("diagnosis")}
+                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500"
+                >
+                  Open Diagnosis Tab
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {activeTab === "diagnosis" ? (
+            <div className="space-y-5">
+              <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>Adaptive Questionnaire</span>
+                  <span>
+                    {answeredCount}/{questionQueue.length} answered
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-cyan-400 transition-all"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
+
+              {currentQuestion ? (
+                <div className="space-y-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4 md:p-5">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-cyan-300">
+                      Question {currentQuestionIndex + 1} of {questionQueue.length}
+                    </p>
+                    <h3 className="mt-2 text-lg font-semibold">
+                      {currentQuestion.prompt}
+                    </h3>
+                    {currentQuestion.helperText ? (
+                      <p className="mt-1 text-sm text-slate-400">
+                        {currentQuestion.helperText}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="grid gap-3">
+                    {currentQuestion.options.map((option) => {
+                      const isSelected = answers[currentQuestion.id] === option.value;
+
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() =>
+                            updateAnswer(currentQuestion.id, option.value)
+                          }
+                          className={`rounded-lg border px-4 py-3 text-left text-sm transition ${
+                            isSelected
+                              ? "border-cyan-400 bg-cyan-500/20"
+                              : "border-slate-700 bg-slate-900 hover:border-slate-500"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={handlePreviousQuestion}
+                      disabled={currentQuestionIndex === 0 || loading}
+                      className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNextQuestion}
+                      disabled={loading}
+                      className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {loading ? "Thinking..." : "Next"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={resetToHome}
+                      className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500"
+                    >
+                      Restart
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
+                  <p>No active diagnosis session yet.</p>
+                  <button
+                    type="button"
+                    onClick={beginDiagnosis}
+                    disabled={loading}
+                    className="mt-3 rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {loading ? "Starting..." : "Start Diagnosis"}
+                  </button>
+                </div>
+              )}
+
+              <div className="grid gap-2 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-400">
+                  Question Navigator
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {questionQueue.map((question, index) => {
+                    const answered = answers[question.id] !== undefined;
+                    const selected = index === currentQuestionIndex;
+
+                    return (
+                      <button
+                        key={question.id}
+                        type="button"
+                        onClick={() => setCurrentQuestionIndex(index)}
+                        className={`rounded-md border px-3 py-1.5 text-xs ${
+                          selected
+                            ? "border-cyan-400 bg-cyan-500/20"
+                            : answered
+                              ? "border-emerald-600 bg-emerald-900/20"
+                              : "border-slate-700 hover:border-slate-500"
+                        }`}
+                      >
+                        {index + 1}. {QUESTION_TITLES[question.id]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {activeTab === "result" ? (
+            <div className="space-y-5">
+              {diagnosis && plan ? (
+                <>
+                  <div className="rounded-xl border border-cyan-700/50 bg-cyan-950/30 p-4">
+                    <p className="text-xs uppercase tracking-wide text-cyan-300">
+                      Diagnosis
+                    </p>
+                    <h2 className="mt-1 text-2xl font-semibold">
+                      {STUCK_TYPE_LABELS[diagnosis.primaryType]}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-300">
+                      Confidence: {Math.round(diagnosis.confidence * 100)}%
+                    </p>
+                    <p className="mt-3 text-sm text-slate-200">
+                      {diagnosis.summary}
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                    <h3 className="text-sm font-semibold text-slate-200">
+                      Ranked Types
+                    </h3>
+                    {diagnosis.rankedTypes.map((item) => (
+                      <div key={item.type} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span>{STUCK_TYPE_LABELS[item.type]}</span>
+                          <span>{Math.round(item.normalized * 100)}%</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-slate-800">
+                          <div
+                            className="h-full rounded-full bg-cyan-400"
+                            style={{ width: `${Math.round(item.normalized * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                    <h3 className="text-lg font-semibold">{plan.headline}</h3>
+                    <p className="mt-2 text-sm text-slate-300">{plan.whyThisWorks}</p>
+                  </div>
+
+                  <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                    <h3 className="text-sm font-semibold text-slate-200">
+                      Intervention Steps
+                    </h3>
+
+                    {plan.steps.map((step, index) => {
+                      const completed = completedStepIds.includes(step.id);
+                      const timerActive = activeTimerStepId === step.id;
+
+                      return (
+                        <div
+                          key={step.id}
+                          className={`rounded-lg border p-3 ${
+                            completed
+                              ? "border-emerald-600 bg-emerald-900/20"
+                              : "border-slate-700"
+                          }`}
+                        >
+                          <p className="text-xs text-slate-400">
+                            Step {index + 1} - {step.minutes} min
+                          </p>
+                          <p className="mt-1 text-sm">{step.instruction}</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleStepComplete(step.id)}
+                              className="rounded-md border border-slate-600 px-3 py-1.5 text-xs hover:border-slate-400"
+                            >
+                              {completed ? "Undo Complete" : "Mark Complete"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => startStepTimer(step.id, step.minutes)}
+                              className="rounded-md border border-cyan-600 px-3 py-1.5 text-xs text-cyan-200 hover:border-cyan-400"
+                            >
+                              {timerActive ? "Restart Timer" : "Start Timer"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-200">Timer</p>
+                      {activeStep ? (
+                        <span className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300">
+                          Active: {activeStep.id}
+                        </span>
+                      ) : (
+                        <span className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300">
+                          No active step
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="mt-2 text-3xl font-semibold">
+                      {formatTimer(timerSecondsLeft)}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={toggleTimerRunning}
+                        disabled={!activeStep}
+                        className="rounded-md border border-slate-600 px-3 py-1.5 text-xs hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {timerRunning ? "Pause" : "Resume"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetTimer}
+                        className="rounded-md border border-slate-600 px-3 py-1.5 text-xs hover:border-slate-400"
+                      >
+                        Reset Timer
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                    <h3 className="text-sm font-semibold text-slate-200">Outcome</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {(Object.keys(OUTCOME_LABELS) as SessionOutcome[]).map(
+                        (outcome) => (
+                          <button
+                            key={outcome}
+                            type="button"
+                            onClick={() => setSelectedOutcome(outcome)}
+                            className={`rounded-md border px-3 py-1.5 text-xs ${
+                              selectedOutcome === outcome
+                                ? "border-cyan-400 bg-cyan-500/20"
+                                : "border-slate-700 hover:border-slate-500"
+                            }`}
+                          >
+                            {OUTCOME_LABELS[outcome]}
+                          </button>
+                        ),
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={saveSession}
+                        disabled={saving}
+                        className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {saving ? "Saving..." : "Save Session"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={beginDiagnosis}
+                        disabled={loading}
+                        className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        New Diagnosis
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("insights")}
+                        className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500"
+                      >
+                        View Insights Tab
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
+                  No diagnosis found. Open the Diagnosis tab and run the questionnaire.
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {activeTab === "insights" ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+                  Insights
+                </h3>
+                {insights.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {insights.map((insight) => (
+                      <div
+                        key={insight.key}
+                        className="rounded-lg border border-slate-700 bg-slate-950/60 p-3"
+                      >
+                        <p className="text-xs text-slate-400">
+                          Confidence: {insight.confidence}
+                        </p>
+                        <p className="mt-1 text-sm">{insight.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-400">
+                    Save sessions to generate behavioral insights.
+                  </p>
+                )}
+
+                {profile ? (
+                  <div className="mt-4 rounded-lg border border-slate-700 bg-slate-950/60 p-3">
+                    <p className="text-xs text-slate-400">Profile Summary</p>
+                    <p className="mt-1 text-sm">Sessions: {profile.totalSessions}</p>
+                    <p className="text-sm">
+                      Avg stuck time: {Math.round(profile.averageTimeStuckMinutes)} min
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("history")}
+                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500"
+                >
+                  Open History Tab
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("result")}
+                  disabled={!diagnosis || !plan}
+                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Back To Plan Tab
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {activeTab === "history" ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+                  Recent Sessions
+                </h3>
+
+                {recentHistory.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {recentHistory.map((session) => (
+                      <button
+                        key={session.id}
+                        type="button"
+                        onClick={() => {
+                          setContext((previous) => ({
+                            ...previous,
+                            subject: session.subject,
+                            assignmentType: session.assignmentType,
+                            timeStuckMinutes: session.timeStuckMinutes,
+                          }));
+                          setNotice(
+                            `Loaded context from ${session.subject} (${session.assignmentType}).`,
+                          );
+                          setActiveTab("context");
+                        }}
+                        className="w-full rounded-lg border border-slate-700 bg-slate-950/60 p-3 text-left hover:border-slate-500"
+                      >
+                        <p className="text-xs text-slate-400">{session.subject}</p>
+                        <p className="text-sm">
+                          {STUCK_TYPE_LABELS[session.stuckType]} -{" "}
+                          {OUTCOME_LABELS[session.outcome]}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-400">
+                    No saved sessions yet.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("insights")}
+                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500"
+                >
+                  Open Insights Tab
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("context")}
+                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500"
+                >
+                  Open Context Tab
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </section>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,26 @@
+<svg width="1200" height="280" viewBox="0 0 1200 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="280" rx="16" fill="#020617"/>
+  <rect x="48" y="64" width="220" height="152" rx="12" fill="#0F172A" stroke="#334155"/>
+  <text x="76" y="112" fill="#E2E8F0" font-size="24" font-family="Arial, Helvetica, sans-serif">I'M STUCK</text>
+  <text x="76" y="142" fill="#94A3B8" font-size="16" font-family="Arial, Helvetica, sans-serif">Trigger diagnosis</text>
+
+  <rect x="332" y="64" width="220" height="152" rx="12" fill="#0F172A" stroke="#334155"/>
+  <text x="362" y="112" fill="#E2E8F0" font-size="22" font-family="Arial, Helvetica, sans-serif">5 Questions</text>
+  <text x="362" y="142" fill="#94A3B8" font-size="16" font-family="Arial, Helvetica, sans-serif">Adaptive intake</text>
+
+  <rect x="616" y="64" width="220" height="152" rx="12" fill="#0F172A" stroke="#334155"/>
+  <text x="642" y="112" fill="#E2E8F0" font-size="22" font-family="Arial, Helvetica, sans-serif">Diagnosis</text>
+  <text x="642" y="142" fill="#94A3B8" font-size="16" font-family="Arial, Helvetica, sans-serif">6 stuck types</text>
+
+  <rect x="900" y="64" width="252" height="152" rx="12" fill="#0F172A" stroke="#334155"/>
+  <text x="930" y="112" fill="#E2E8F0" font-size="22" font-family="Arial, Helvetica, sans-serif">Intervention</text>
+  <text x="930" y="142" fill="#94A3B8" font-size="16" font-family="Arial, Helvetica, sans-serif">Tiny next step + timer</text>
+
+  <path d="M274 140H322" stroke="#22D3EE" stroke-width="6" stroke-linecap="round"/>
+  <path d="M558 140H606" stroke="#22D3EE" stroke-width="6" stroke-linecap="round"/>
+  <path d="M842 140H892" stroke="#22D3EE" stroke-width="6" stroke-linecap="round"/>
+
+  <circle cx="322" cy="140" r="7" fill="#67E8F9"/>
+  <circle cx="606" cy="140" r="7" fill="#67E8F9"/>
+  <circle cx="892" cy="140" r="7" fill="#67E8F9"/>
+</svg>
