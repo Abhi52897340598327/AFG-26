@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bot,
   MessageSquareText,
@@ -16,6 +16,14 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   createdAt: Date;
+}
+
+interface ChatTab {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  input: string;
+  isTyping: boolean;
 }
 
 interface SideChatbotProps {
@@ -62,6 +70,47 @@ function buildAssistantReply(
   return "I can help you use this app: set context, run diagnosis, then execute the first intervention step without overthinking.";
 }
 
+const DEFAULT_CHAT_MESSAGE =
+  "Hello! I am your integrated Stuck assistant. Ask me for next steps, diagnosis help, or context checks.";
+const NEW_TAB_MESSAGE =
+  "New chat tab started. Ask for diagnosis guidance, next steps, or context checks.";
+
+function createUniqueId(prefix: string): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+}
+
+function createChatMessage(
+  role: ChatMessage["role"],
+  content: string,
+): ChatMessage {
+  return {
+    id: createUniqueId(role),
+    role,
+    content,
+    createdAt: new Date(),
+  };
+}
+
+function createChatTab(title: string, firstMessage: string): ChatTab {
+  return {
+    id: createUniqueId("tab"),
+    title,
+    messages: [createChatMessage("assistant", firstMessage)],
+    input: "",
+    isTyping: false,
+  };
+}
+
+function renumberChatTabs(tabs: ChatTab[]): ChatTab[] {
+  return tabs.map((tab, index) => ({
+    ...tab,
+    title: `Chat ${index + 1}`,
+  }));
+}
+
 export default function SideChatbot({
   isOpen,
   onOpen,
@@ -73,44 +122,117 @@ export default function SideChatbot({
   onOpenDiagnosisTab,
   onOpenPlanTab,
 }: SideChatbotProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content:
-        "Hello! I am your integrated Stuck assistant. Ask me for next steps, diagnosis help, or context checks.",
-      createdAt: new Date(),
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const initialTab = useMemo(
+    () => createChatTab("Chat 1", DEFAULT_CHAT_MESSAGE),
+    [],
+  );
+  const [chatTabs, setChatTabs] = useState<ChatTab[]>([initialTab]);
+  const [activeTabId, setActiveTabId] = useState<string>(initialTab.id);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const activeTab =
+    chatTabs.find((tab) => tab.id === activeTabId) ?? chatTabs[0] ?? null;
 
   useEffect(() => {
     if (!scrollContainerRef.current) {
       return;
     }
+    if (!isOpen) {
+      return;
+    }
 
     scrollContainerRef.current.scrollTop =
       scrollContainerRef.current.scrollHeight;
-  }, [messages, isTyping]);
+  }, [activeTab?.messages.length, activeTab?.isTyping, isOpen, activeTabId]);
+
+  function addChatTab(): void {
+    const newTab = createChatTab(`Chat ${chatTabs.length + 1}`, NEW_TAB_MESSAGE);
+    setChatTabs((previous) => [...previous, newTab]);
+    setActiveTabId(newTab.id);
+  }
+
+  function deleteChatTab(tabId: string): void {
+    if (chatTabs.length <= 1) {
+      return;
+    }
+
+    const tabIndex = chatTabs.findIndex((tab) => tab.id === tabId);
+    if (tabIndex === -1) {
+      return;
+    }
+
+    const remainingTabs = chatTabs.filter((tab) => tab.id !== tabId);
+    const renumberedTabs = renumberChatTabs(remainingTabs);
+    setChatTabs(renumberedTabs);
+
+    if (activeTabId === tabId) {
+      const nextIndex = Math.min(tabIndex, renumberedTabs.length - 1);
+      const nextTab = renumberedTabs[nextIndex] ?? renumberedTabs[0];
+      if (nextTab) {
+        setActiveTabId(nextTab.id);
+      }
+    }
+  }
+
+  function updateActiveTabInput(value: string): void {
+    if (!activeTab) {
+      return;
+    }
+    const targetTabId = activeTab.id;
+    setChatTabs((previous) =>
+      previous.map((tab) =>
+        tab.id === targetTabId
+          ? {
+              ...tab,
+              input: value,
+            }
+          : tab,
+      ),
+    );
+  }
+
+  function appendAssistantMessage(content: string): void {
+    if (!activeTab) {
+      return;
+    }
+
+    const targetTabId = activeTab.id;
+    const assistantMessage = createChatMessage("assistant", content);
+    setChatTabs((previous) =>
+      previous.map((tab) =>
+        tab.id === targetTabId
+          ? {
+              ...tab,
+              messages: [...tab.messages, assistantMessage],
+            }
+          : tab,
+      ),
+    );
+  }
 
   function sendMessage(rawMessage?: string): void {
-    const content = (rawMessage ?? input).trim();
+    if (!activeTab) {
+      return;
+    }
+
+    const targetTabId = activeTab.id;
+    const content = (rawMessage ?? activeTab.input).trim();
     if (!content) {
       return;
     }
 
-    const userMessage: ChatMessage = {
-      id: `${Date.now()}-user`,
-      role: "user",
-      content,
-      createdAt: new Date(),
-    };
-
-    setMessages((previous) => [...previous, userMessage]);
-    setInput("");
-    setIsTyping(true);
+    const userMessage = createChatMessage("user", content);
+    setChatTabs((previous) =>
+      previous.map((tab) =>
+        tab.id === targetTabId
+          ? {
+              ...tab,
+              messages: [...tab.messages, userMessage],
+              input: "",
+              isTyping: true,
+            }
+          : tab,
+      ),
+    );
 
     const reply = buildAssistantReply(
       content,
@@ -121,29 +243,19 @@ export default function SideChatbot({
     );
 
     window.setTimeout(() => {
-      const assistantMessage: ChatMessage = {
-        id: `${Date.now()}-assistant`,
-        role: "assistant",
-        content: reply,
-        createdAt: new Date(),
-      };
-      setMessages((previous) => [...previous, assistantMessage]);
-      setIsTyping(false);
+      const assistantMessage = createChatMessage("assistant", reply);
+      setChatTabs((previous) =>
+        previous.map((tab) =>
+          tab.id === targetTabId
+            ? {
+                ...tab,
+                messages: [...tab.messages, assistantMessage],
+                isTyping: false,
+              }
+            : tab,
+        ),
+      );
     }, 900);
-  }
-
-  function resetChat(): void {
-    setMessages([
-      {
-        id: "1",
-        role: "assistant",
-        content:
-          "New chat started. Ask for diagnosis guidance, next steps, or context checks.",
-        createdAt: new Date(),
-      },
-    ]);
-    setInput("");
-    setIsTyping(false);
   }
 
   return (
@@ -152,7 +264,7 @@ export default function SideChatbot({
         <button
           type="button"
           onClick={onOpen}
-          className="fixed right-0 top-1/2 z-50 -translate-y-1/2 rounded-l-xl border border-r-0 border-slate-600 bg-slate-900 px-3 py-4 text-sm text-cyan-200 shadow-xl hover:border-cyan-400"
+          className="fixed right-0 top-1/2 z-50 -translate-y-1/2 rounded-l-xl border border-r-0 border-emerald-700 bg-emerald-900 px-3 py-4 text-sm text-lime-100 shadow-xl hover:border-lime-300"
         >
           <span className="flex items-center gap-2">
             <MessageSquareText size={16} />
@@ -162,17 +274,17 @@ export default function SideChatbot({
       ) : null}
 
       {isOpen ? (
-        <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[430px] flex-col border-l border-slate-700 bg-slate-950 shadow-2xl">
-          <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-3">
+        <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[430px] flex-col border-l border-emerald-800 bg-emerald-950 shadow-2xl">
+          <div className="flex items-center justify-between border-b border-emerald-900 bg-emerald-900 px-4 py-3">
             <div className="flex items-center gap-3">
-              <div className="rounded-full bg-slate-800 p-2">
-                <Sparkles size={16} className="text-cyan-300" />
+              <div className="rounded-full bg-emerald-900 p-2">
+                <Sparkles size={16} className="text-lime-200" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-100">
+                <p className="text-sm font-semibold text-emerald-50">
                   Mobile Chatbot
                 </p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-emerald-300">
                   Integrated from mobile design
                 </p>
               </div>
@@ -180,16 +292,16 @@ export default function SideChatbot({
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={resetChat}
-                className="rounded-md border border-slate-700 p-2 text-slate-300 hover:border-slate-500"
-                aria-label="New chat"
+                onClick={addChatTab}
+                className="rounded-md border border-emerald-800 p-2 text-emerald-200 hover:border-lime-500"
+                aria-label="New chat tab"
               >
                 <Plus size={16} />
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-md border border-slate-700 p-2 text-slate-300 hover:border-slate-500"
+                className="rounded-md border border-emerald-800 p-2 text-emerald-200 hover:border-lime-500"
                 aria-label="Close chat"
               >
                 <X size={16} />
@@ -197,7 +309,44 @@ export default function SideChatbot({
             </div>
           </div>
 
-          <div className="border-b border-slate-800 bg-slate-900/60 px-3 py-3">
+          <div className="border-b border-emerald-900 bg-emerald-900/70 px-3 py-2">
+            <div className="flex items-center gap-2 overflow-x-auto">
+              {chatTabs.map((tab) => {
+                const selected = tab.id === activeTabId;
+                const canDelete = chatTabs.length > 1;
+                return (
+                  <div
+                    key={tab.id}
+                    className={`shrink-0 flex items-center rounded-md border text-xs transition ${
+                      selected
+                        ? "border-lime-300 bg-lime-300/20 text-lime-100"
+                        : "border-emerald-800 text-emerald-200 hover:border-lime-500"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setActiveTabId(tab.id)}
+                      className="px-3 py-1"
+                    >
+                      {tab.title}
+                    </button>
+                    {canDelete ? (
+                      <button
+                        type="button"
+                        onClick={() => deleteChatTab(tab.id)}
+                        className="pr-2 text-emerald-300 hover:text-lime-100"
+                        aria-label={`Delete ${tab.title}`}
+                      >
+                        <X size={12} />
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="border-b border-emerald-900 bg-emerald-950/60 px-3 py-3">
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -205,7 +354,7 @@ export default function SideChatbot({
                   sendMessage("What is my diagnosis?");
                   onOpenPlanTab();
                 }}
-                className="rounded-md border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 hover:border-cyan-400"
+                className="rounded-md border border-emerald-800 px-2.5 py-1.5 text-xs text-emerald-100 hover:border-lime-300"
               >
                 What is my diagnosis?
               </button>
@@ -215,26 +364,19 @@ export default function SideChatbot({
                   sendMessage("What is my next step?");
                   onOpenPlanTab();
                 }}
-                className="rounded-md border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 hover:border-cyan-400"
+                className="rounded-md border border-emerald-800 px-2.5 py-1.5 text-xs text-emerald-100 hover:border-lime-300"
               >
                 Give me the next step
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setMessages((previous) => [
-                    ...previous,
-                    {
-                      id: `${Date.now()}-assistant`,
-                      role: "assistant",
-                      content:
-                        "Opening Diagnosis tab now. Answer each question quickly.",
-                      createdAt: new Date(),
-                    },
-                  ]);
+                  appendAssistantMessage(
+                    "Opening Diagnosis tab now. Answer each question quickly.",
+                  );
                   onOpenDiagnosisTab();
                 }}
-                className="rounded-md border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 hover:border-cyan-400"
+                className="rounded-md border border-emerald-800 px-2.5 py-1.5 text-xs text-emerald-100 hover:border-lime-300"
               >
                 Start diagnosis flow
               </button>
@@ -245,7 +387,7 @@ export default function SideChatbot({
             ref={scrollContainerRef}
             className="flex-1 space-y-4 overflow-y-auto px-3 py-4"
           >
-            {messages.map((message) => {
+            {(activeTab?.messages ?? []).map((message) => {
               const isUser = message.role === "user";
               return (
                 <div
@@ -261,8 +403,8 @@ export default function SideChatbot({
                   <div
                     className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
                       isUser
-                        ? "rounded-tr-sm bg-blue-600 text-white"
-                        : "rounded-tl-sm bg-slate-800 text-slate-100"
+                        ? "rounded-tr-sm bg-emerald-600 text-white"
+                        : "rounded-tl-sm bg-emerald-900 text-emerald-50"
                     }`}
                   >
                     <p>{message.content}</p>
@@ -275,7 +417,7 @@ export default function SideChatbot({
                   </div>
 
                   {isUser ? (
-                    <div className="mt-1 rounded-full bg-blue-600 p-1.5 text-white">
+                    <div className="mt-1 rounded-full bg-emerald-600 p-1.5 text-white">
                       <User size={14} />
                     </div>
                   ) : null}
@@ -283,19 +425,19 @@ export default function SideChatbot({
               );
             })}
 
-            {isTyping ? (
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <div className="h-2 w-2 animate-pulse rounded-full bg-slate-400" />
+            {activeTab?.isTyping ? (
+              <div className="flex items-center gap-2 text-xs text-emerald-300">
+                <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
                 Assistant is typing...
               </div>
             ) : null}
           </div>
 
-          <div className="border-t border-slate-800 bg-slate-900 px-3 py-3">
+          <div className="border-t border-emerald-900 bg-emerald-900 px-3 py-3">
             <div className="flex items-end gap-2">
               <textarea
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
+                value={activeTab?.input ?? ""}
+                onChange={(event) => updateActiveTabInput(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
@@ -303,13 +445,13 @@ export default function SideChatbot({
                   }
                 }}
                 placeholder="Message chatbot..."
-                className="max-h-28 min-h-[42px] flex-1 resize-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-300 focus:ring"
+                className="max-h-28 min-h-[42px] flex-1 resize-none rounded-lg border border-emerald-800 bg-emerald-950 px-3 py-2 text-sm text-emerald-50 outline-none ring-lime-300 focus:ring"
               />
               <button
                 type="button"
                 onClick={() => sendMessage()}
-                disabled={!input.trim()}
-                className="rounded-lg bg-cyan-500 p-2.5 text-slate-950 hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!activeTab || !activeTab.input.trim()}
+                className="rounded-lg bg-lime-400 p-2.5 text-emerald-950 hover:bg-lime-300 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Send message"
               >
                 <Send size={16} />

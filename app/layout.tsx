@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Stuck - Academic Paralysis Diagnosis",
+  title: "Unstuck - Academic Paralysis Diagnosis",
   description:
     "Diagnostic and intervention engine that helps students identify why they are stuck and what to do next.",
 };
