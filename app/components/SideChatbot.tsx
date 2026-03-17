@@ -10,6 +10,9 @@ import {
   User,
   X,
 } from "lucide-react";
+import { sendMessageToAPI, ChatMessage as ApiMessage } from "../services/api";
+import "katex/dist/katex.min.css";
+import { InlineMath, BlockMath } from "react-katex";
 
 interface ChatMessage {
   id: string;
@@ -86,6 +89,27 @@ export default function SideChatbot({
   const [isTyping, setIsTyping] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Helper function to render LaTeX content
+  const renderContent = (content: string) => {
+    // Split content by $$ for block math and $ for inline math
+    const parts = content.split(/(\$\$.*?\$\$|\$.*?\$)/);
+    
+    return parts.map((part, index) => {
+      if (part.startsWith('$$') && part.endsWith('$$')) {
+        // Block math
+        const math = part.slice(2, -2);
+        return <BlockMath key={index} math={math} errorColor={"#ff6b6b"} />;
+      } else if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
+        // Inline math
+        const math = part.slice(1, -1);
+        return <InlineMath key={index} math={math} errorColor={"#ff6b6b"} />;
+      } else {
+        // Regular text
+        return <span key={index}>{part}</span>;
+      }
+    });
+  };
+
   useEffect(() => {
     if (!scrollContainerRef.current) {
       return;
@@ -95,7 +119,7 @@ export default function SideChatbot({
       scrollContainerRef.current.scrollHeight;
   }, [messages, isTyping]);
 
-  function sendMessage(rawMessage?: string): void {
+  async function sendMessage(rawMessage?: string): Promise<void> {
     const content = (rawMessage ?? input).trim();
     if (!content) {
       return;
@@ -112,24 +136,57 @@ export default function SideChatbot({
     setInput("");
     setIsTyping(true);
 
-    const reply = buildAssistantReply(
-      content,
-      diagnosisLabel,
-      firstAction,
-      subject,
-      assignmentType,
-    );
+    try {
+      // Convert messages to API format
+      const apiMessages: ApiMessage[] = messages.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content
+      }));
+      apiMessages.push({
+        role: 'user',
+        content
+      });
 
-    window.setTimeout(() => {
+      // Add system context about the app
+      const systemMessage: ApiMessage = {
+        role: 'system',
+        content: `You are an assistant for an app called "AFG-26" that helps students overcome academic stuckness. Current context: Subject: ${subject}, Assignment: ${assignmentType}, Diagnosis: ${diagnosisLabel || 'None'}, First Action: ${firstAction || 'None'}. Help students with next steps, diagnosis guidance, and context checks. Be concise and actionable. IMPORTANT: Format all mathematical expressions, equations, formulas, and scientific notation using LaTeX format. Use $ for inline math and $$ for display math. For example: $x^2 + 2x + 1 = 0$ or $$\\int_{0}^{\\infty} e^{-x} dx = 1$$`
+      };
+      
+      const messagesWithSystem = [systemMessage, ...apiMessages];
+
+      // Call the API
+      const aiResponse = await sendMessageToAPI(messagesWithSystem);
+
       const assistantMessage: ChatMessage = {
+        id: `${Date.now()}-assistant`,
+        role: "assistant",
+        content: aiResponse,
+        createdAt: new Date(),
+      };
+      setMessages((previous) => [...previous, assistantMessage]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      
+      // Fallback to the original rule-based response if API fails
+      const reply = buildAssistantReply(
+        content,
+        diagnosisLabel,
+        firstAction,
+        subject,
+        assignmentType,
+      );
+
+      const fallbackMessage: ChatMessage = {
         id: `${Date.now()}-assistant`,
         role: "assistant",
         content: reply,
         createdAt: new Date(),
       };
-      setMessages((previous) => [...previous, assistantMessage]);
+      setMessages((previous) => [...previous, fallbackMessage]);
+    } finally {
       setIsTyping(false);
-    }, 900);
+    }
   }
 
   function resetChat(): void {
@@ -265,7 +322,13 @@ export default function SideChatbot({
                         : "rounded-tl-sm bg-slate-800 text-slate-100"
                     }`}
                   >
-                    <p>{message.content}</p>
+                    <div className="prose prose-invert max-w-none">
+                      {isUser ? (
+                        <p>{message.content}</p>
+                      ) : (
+                        <div>{renderContent(message.content)}</div>
+                      )}
+                    </div>
                     <p className="mt-1 text-[10px] opacity-70">
                       {message.createdAt.toLocaleTimeString([], {
                         hour: "2-digit",

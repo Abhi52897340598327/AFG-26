@@ -11,10 +11,12 @@ import {
     SafeAreaView,
     Dimensions,
     ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Send, User, Bot, Sparkles, MoreVertical, Plus } from 'lucide-react-native';
 import { Message } from '../types';
+import { sendMessageToAPI, ChatMessage } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -31,7 +33,7 @@ const ChatInterface: React.FC = () => {
     const [isTyping, setIsTyping] = useState(false);
     const flatListRef = useRef<FlatList>(null);
 
-    const sendMessage = () => {
+    const sendMessage = async () => {
         if (!input.trim()) return;
 
         const userMessage: Message = {
@@ -45,17 +47,46 @@ const ChatInterface: React.FC = () => {
         setInput('');
         setIsTyping(true);
 
-        // Simulate AI response
-        setTimeout(() => {
+        try {
+            // Convert messages to API format
+            const apiMessages: ChatMessage[] = messages.map(msg => ({
+                role: msg.role as 'user' | 'assistant',
+                content: msg.content
+            }));
+            apiMessages.push({
+                role: 'user',
+                content: input.trim()
+            });
+
+            // Call the API
+            const aiResponse = await sendMessageToAPI(apiMessages);
+
             const aiMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: "That's an interesting question! As a simulated ChatGPT-like interface, I'm here to show you how a real integration would look. Would you like to see some code snippets or UI components?",
+                content: aiResponse,
                 createdAt: new Date(),
             };
             setMessages((prev) => [...prev, aiMessage]);
+        } catch (error) {
+            console.error('Error sending message:', error);
+            Alert.alert(
+                'Error',
+                'Failed to get response from AI. Please try again.',
+                [{ text: 'OK' }]
+            );
+            
+            // Add error message
+            const errorMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                role: 'assistant',
+                content: 'Sorry, I encountered an error. Please try again.',
+                createdAt: new Date(),
+            };
+            setMessages((prev) => [...prev, errorMessage]);
+        } finally {
             setIsTyping(false);
-        }, 2000);
+        }
     };
 
     useEffect(() => {
