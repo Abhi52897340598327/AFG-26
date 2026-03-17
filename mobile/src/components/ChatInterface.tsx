@@ -9,14 +9,32 @@ import {
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
-    Dimensions,
     ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Send, User, Bot, Sparkles, MoreVertical, Plus } from 'lucide-react-native';
 import { Message } from '../types';
 
-const { width } = Dimensions.get('window');
+const palette = {
+    background: '#F5FBF4',
+    surface: '#FFFFFF',
+    surfaceSoft: '#ECF6EB',
+    border: '#BDD6BE',
+    headerGradientStart: '#2F7D4F',
+    headerGradientEnd: '#8CB867',
+    assistantGradientStart: '#4A9B5F',
+    assistantGradientEnd: '#8CB867',
+    userGradientStart: '#2F7D4F',
+    userGradientEnd: '#67A958',
+    userAvatar: '#3F8E58',
+    textPrimary: '#1E3B2C',
+    textSecondary: '#4E6F59',
+    textMuted: '#729177',
+    textOnAccent: '#FFFFFF',
+    iconSubtle: '#7A9A7D',
+    iconOnHeader: '#E8F5DF',
+    sendDisabled: '#CEE3CD',
+};
 
 const ChatInterface: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([
@@ -79,14 +97,14 @@ const ChatInterface: React.FC = () => {
                 <View style={styles.avatarContainer}>
                     {isUser ? (
                         <View style={[styles.avatar, styles.userAvatar]}>
-                            <User size={16} color="#fff" />
+                            <User size={16} color={palette.textOnAccent} />
                         </View>
                     ) : (
                         <LinearGradient
-                            colors={['#10b981', '#059669']}
+                            colors={[palette.assistantGradientStart, palette.assistantGradientEnd]}
                             style={styles.avatar}
                         >
-                            <Bot size={16} color="#fff" />
+                            <Bot size={16} color={palette.textOnAccent} />
                         </LinearGradient>
                     )}
                 </View>
@@ -101,7 +119,7 @@ const ChatInterface: React.FC = () => {
                     >
                         {isUser ? (
                             <LinearGradient
-                                colors={['#3b82f6', '#2563eb']}
+                                colors={[palette.userGradientStart, palette.userGradientEnd]}
                                 style={styles.gradientBubble}
                             >
                                 <Text style={styles.userText}>{item.content}</Text>
@@ -121,13 +139,13 @@ const ChatInterface: React.FC = () => {
     return (
         <SafeAreaView style={styles.container}>
             <LinearGradient
-                colors={['#1e293b', '#0f172a']}
+                colors={[palette.headerGradientStart, palette.headerGradientEnd]}
                 style={styles.header}
             >
                 <View style={styles.headerTop}>
                     <View style={styles.headerInfo}>
                         <View style={styles.sparkleContainer}>
-                            <Sparkles size={18} color="#60a5fa" />
+                            <Sparkles size={18} color={palette.headerGradientStart} />
                         </View>
                         <View>
                             <Text style={styles.headerTitle}>ChatGPT 4.0</Text>
@@ -135,7 +153,7 @@ const ChatInterface: React.FC = () => {
                         </View>
                     </View>
                     <TouchableOpacity style={styles.iconButton}>
-                        <MoreVertical size={20} color="#94a3b8" />
+                        <MoreVertical size={20} color={palette.iconOnHeader} />
                     </TouchableOpacity>
                 </View>
             </LinearGradient>
@@ -151,10 +169,10 @@ const ChatInterface: React.FC = () => {
                     isTyping ? (
                         <View style={styles.typingContainer}>
                             <View style={[styles.avatar, styles.aiAvatarSmall]}>
-                                <Bot size={12} color="#fff" />
+                                <Bot size={12} color={palette.textOnAccent} />
                             </View>
                             <View style={styles.typingBubble}>
-                                <ActivityIndicator size="small" color="#94a3b8" />
+                                <ActivityIndicator size="small" color={palette.textSecondary} />
                                 <Text style={styles.typingText}>thinking...</Text>
                             </View>
                         </View>
@@ -168,13 +186,13 @@ const ChatInterface: React.FC = () => {
             >
                 <View style={styles.inputWrapper}>
                     <TouchableOpacity style={styles.attachButton}>
-                        <Plus size={22} color="#64748b" />
+                        <Plus size={22} color={palette.iconSubtle} />
                     </TouchableOpacity>
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.input}
                             placeholder="Message..."
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={palette.iconSubtle}
                             value={input}
                             onChangeText={setInput}
                             multiline
@@ -189,7 +207,7 @@ const ChatInterface: React.FC = () => {
                         >
                             <Send
                                 size={18}
-                                color={input.trim() ? '#fff' : '#94a3b8'}
+                                color={input.trim() ? palette.textOnAccent : palette.iconSubtle}
                             />
                         </TouchableOpacity>
                     </View>
@@ -202,13 +220,13 @@ const ChatInterface: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#020617',
+        backgroundColor: palette.background,
     },
     header: {
         paddingVertical: 16,
         paddingHorizontal: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#1e293b',
+        borderBottomColor: palette.border,
     },
     headerTop: {
         flexDirection: 'row',
@@ -223,18 +241,18 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#1e293b',
+        backgroundColor: '#EAF6E8',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,
     },
     headerTitle: {
-        color: '#fff',
+        color: palette.textOnAccent,
         fontSize: 16,
         fontWeight: '700',
     },
     headerSubtitle: {
-        color: '#64748b',
+        color: palette.iconOnHeader,
         fontSize: 12,
     },
     iconButton: {
@@ -267,11 +285,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     userAvatar: {
-        backgroundColor: '#3b82f6',
+        backgroundColor: palette.userAvatar,
         marginLeft: 10,
     },
     aiAvatarSmall: {
-        backgroundColor: '#10b981',
+        backgroundColor: palette.assistantGradientStart,
         width: 24,
         height: 24,
         marginRight: 8,
@@ -280,7 +298,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     roleText: {
-        color: '#64748b',
+        color: palette.textSecondary,
         fontSize: 11,
         fontWeight: '600',
         marginBottom: 4,
@@ -294,7 +312,7 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 4,
     },
     aiBubble: {
-        backgroundColor: '#1e293b',
+        backgroundColor: palette.surfaceSoft,
         padding: 14,
         borderTopLeftRadius: 4,
     },
@@ -302,17 +320,17 @@ const styles = StyleSheet.create({
         padding: 14,
     },
     userText: {
-        color: '#fff',
+        color: palette.textOnAccent,
         fontSize: 15,
         lineHeight: 22,
     },
     aiText: {
-        color: '#e2e8f0',
+        color: palette.textPrimary,
         fontSize: 15,
         lineHeight: 22,
     },
     timeText: {
-        color: '#475569',
+        color: palette.textMuted,
         fontSize: 10,
         marginTop: 6,
         marginHorizontal: 4,
@@ -325,14 +343,14 @@ const styles = StyleSheet.create({
     typingBubble: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1e293b',
+        backgroundColor: palette.surfaceSoft,
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 20,
         borderTopLeftRadius: 4,
     },
     typingText: {
-        color: '#94a3b8',
+        color: palette.textSecondary,
         fontSize: 13,
         marginLeft: 8,
         fontStyle: 'italic',
@@ -342,9 +360,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        backgroundColor: '#0f172a',
+        backgroundColor: palette.surface,
         borderTopWidth: 1,
-        borderTopColor: '#1e293b',
+        borderTopColor: palette.border,
     },
     attachButton: {
         width: 40,
@@ -357,15 +375,15 @@ const styles = StyleSheet.create({
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1e293b',
+        backgroundColor: palette.surfaceSoft,
         borderRadius: 24,
         paddingHorizontal: 16,
         borderWidth: 1,
-        borderColor: '#334155',
+        borderColor: palette.border,
     },
     input: {
         flex: 1,
-        color: '#fff',
+        color: palette.textPrimary,
         fontSize: 15,
         paddingVertical: 10,
         maxHeight: 100,
@@ -374,13 +392,13 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#3b82f6',
+        backgroundColor: palette.userGradientStart,
         alignItems: 'center',
         justifyContent: 'center',
         marginLeft: 8,
     },
     sendButtonDisabled: {
-        backgroundColor: 'transparent',
+        backgroundColor: palette.sendDisabled,
     },
 });
 
