@@ -1,4 +1,4 @@
-const API_KEY = process.env.GEMINI_API_KEY || '';
+const API_KEY = 'AIzaSyAzsKHM6TADTiPFsaY55gFGwbJHnKtQTdc';
 const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 export interface ChatMessage {
