@@ -135,24 +135,19 @@ export default function SideChatbot({
   const activeTab =
     chatTabs.find((tab) => tab.id === activeTabId) ?? chatTabs[0] ?? null;
 
-  // Helper function to render LaTeX content
   const renderContent = (content: string) => {
-    // Split content by $$ for block math and $ for inline math
     const parts = content.split(/(\$\$.*?\$\$|\$.*?\$)/);
 
     return parts.map((part, index) => {
       if (part.startsWith("$$") && part.endsWith("$$")) {
-        // Block math
         const math = part.slice(2, -2);
         return <BlockMath key={index} math={math} errorColor={"#ff6b6b"} />;
-      } else if (part.startsWith("$") && part.endsWith("$") && part.length > 2) {
-        // Inline math
+      }
+      if (part.startsWith("$") && part.endsWith("$") && part.length > 2) {
         const math = part.slice(1, -1);
         return <InlineMath key={index} math={math} errorColor={"#ff6b6b"} />;
-      } else {
-        // Regular text
-        return <span key={index}>{part}</span>;
       }
+      return <span key={index}>{part}</span>;
     });
   };
 
@@ -258,21 +253,6 @@ export default function SideChatbot({
       ),
     );
 
-    const applyAssistantReply = (replyContent: string) => {
-      const assistantMessage = createChatMessage("assistant", replyContent);
-      setChatTabs((previous) =>
-        previous.map((tab) =>
-          tab.id === targetTabId
-            ? {
-                ...tab,
-                messages: [...tab.messages, assistantMessage],
-                isTyping: false,
-              }
-            : tab,
-        ),
-      );
-    };
-
     try {
       const apiMessages: ApiMessage[] = activeTab.messages.map((message) => ({
         role: message.role,
@@ -289,17 +269,39 @@ export default function SideChatbot({
       };
 
       const aiResponse = await sendMessageToAPI([systemMessage, ...apiMessages]);
-      applyAssistantReply(aiResponse);
+      const assistantMessage = createChatMessage("assistant", aiResponse);
+      setChatTabs((previous) =>
+        previous.map((tab) =>
+          tab.id === targetTabId
+            ? {
+                ...tab,
+                messages: [...tab.messages, assistantMessage],
+                isTyping: false,
+              }
+            : tab,
+        ),
+      );
     } catch (error) {
       console.error("Error sending message:", error);
-      const fallbackReply = buildAssistantReply(
+      const reply = buildAssistantReply(
         content,
         diagnosisLabel,
         firstAction,
         subject,
         assignmentType,
       );
-      applyAssistantReply(fallbackReply);
+      const assistantMessage = createChatMessage("assistant", reply);
+      setChatTabs((previous) =>
+        previous.map((tab) =>
+          tab.id === targetTabId
+            ? {
+                ...tab,
+                messages: [...tab.messages, assistantMessage],
+                isTyping: false,
+              }
+            : tab,
+        ),
+      );
     }
   }
 
