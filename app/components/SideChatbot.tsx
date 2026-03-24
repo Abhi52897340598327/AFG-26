@@ -132,25 +132,22 @@ export default function SideChatbot({
   const [chatTabs, setChatTabs] = useState<ChatTab[]>([initialTab]);
   const [activeTabId, setActiveTabId] = useState<string>(initialTab.id);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const activeTab =
+    chatTabs.find((tab) => tab.id === activeTabId) ?? chatTabs[0] ?? null;
 
-  // Helper function to render LaTeX content
   const renderContent = (content: string) => {
-    // Split content by $$ for block math and $ for inline math
     const parts = content.split(/(\$\$.*?\$\$|\$.*?\$)/);
-    
+
     return parts.map((part, index) => {
-      if (part.startsWith('$$') && part.endsWith('$$')) {
-        // Block math
+      if (part.startsWith("$$") && part.endsWith("$$")) {
         const math = part.slice(2, -2);
         return <BlockMath key={index} math={math} errorColor={"#ff6b6b"} />;
-      } else if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
-        // Inline math
+      }
+      if (part.startsWith("$") && part.endsWith("$") && part.length > 2) {
         const math = part.slice(1, -1);
         return <InlineMath key={index} math={math} errorColor={"#ff6b6b"} />;
-      } else {
-        // Regular text
-        return <span key={index}>{part}</span>;
       }
+      return <span key={index}>{part}</span>;
     });
   };
 
@@ -232,55 +229,60 @@ export default function SideChatbot({
   }
 
   async function sendMessage(rawMessage?: string): Promise<void> {
-    const content = (rawMessage ?? input).trim();
+    if (!activeTab) {
+      return;
+    }
+
+    const targetTabId = activeTab.id;
+    const content = (rawMessage ?? activeTab.input).trim();
     if (!content) {
       return;
     }
 
-    const userMessage: ChatMessage = {
-      id: `${Date.now()}-user`,
-      role: "user",
-      content,
-      createdAt: new Date(),
-    };
-
-    setMessages((previous) => [...previous, userMessage]);
-    setInput("");
-    setIsTyping(true);
+    const userMessage = createChatMessage("user", content);
+    setChatTabs((previous) =>
+      previous.map((tab) =>
+        tab.id === targetTabId
+          ? {
+              ...tab,
+              messages: [...tab.messages, userMessage],
+              input: "",
+              isTyping: true,
+            }
+          : tab,
+      ),
+    );
 
     try {
-      // Convert messages to API format
-      const apiMessages: ApiMessage[] = messages.map(msg => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content
+      const apiMessages: ApiMessage[] = activeTab.messages.map((message) => ({
+        role: message.role,
+        content: message.content,
       }));
       apiMessages.push({
-        role: 'user',
-        content
+        role: "user",
+        content,
       });
 
-      // Add system context about the app
       const systemMessage: ApiMessage = {
-        role: 'system',
-        content: `You are an assistant for an app called "AFG-26" that helps students overcome academic stuckness. Current context: Subject: ${subject}, Assignment: ${assignmentType}, Diagnosis: ${diagnosisLabel || 'None'}, First Action: ${firstAction || 'None'}. Help students with next steps, diagnosis guidance, and context checks. Be concise and actionable. IMPORTANT: Format all mathematical expressions, equations, formulas, and scientific notation using LaTeX format. Use $ for inline math and $$ for display math. For example: $x^2 + 2x + 1 = 0$ or $$\\int_{0}^{\\infty} e^{-x} dx = 1$$`
+        role: "system",
+        content: `You are an assistant for an app called "AFG-26" that helps students overcome academic stuckness. Current context: Subject: ${subject}, Assignment: ${assignmentType}, Diagnosis: ${diagnosisLabel || "None"}, First Action: ${firstAction || "None"}. Help students with next steps, diagnosis guidance, and context checks. Be concise and actionable. IMPORTANT: Format all mathematical expressions, equations, formulas, and scientific notation using LaTeX format. Use $ for inline math and $$ for display math. For example: $x^2 + 2x + 1 = 0$ or $$\\int_{0}^{\\infty} e^{-x} dx = 1$$`,
       };
-      
-      const messagesWithSystem = [systemMessage, ...apiMessages];
 
-      // Call the API
-      const aiResponse = await sendMessageToAPI(messagesWithSystem);
-
-      const assistantMessage: ChatMessage = {
-        id: `${Date.now()}-assistant`,
-        role: "assistant",
-        content: aiResponse,
-        createdAt: new Date(),
-      };
-      setMessages((previous) => [...previous, assistantMessage]);
+      const aiResponse = await sendMessageToAPI([systemMessage, ...apiMessages]);
+      const assistantMessage = createChatMessage("assistant", aiResponse);
+      setChatTabs((previous) =>
+        previous.map((tab) =>
+          tab.id === targetTabId
+            ? {
+                ...tab,
+                messages: [...tab.messages, assistantMessage],
+                isTyping: false,
+              }
+            : tab,
+        ),
+      );
     } catch (error) {
-      console.error('Error sending message:', error);
-      
-      // Fallback to the original rule-based response if API fails
+      console.error("Error sending message:", error);
       const reply = buildAssistantReply(
         content,
         diagnosisLabel,
@@ -288,16 +290,18 @@ export default function SideChatbot({
         subject,
         assignmentType,
       );
-
-      const fallbackMessage: ChatMessage = {
-        id: `${Date.now()}-assistant`,
-        role: "assistant",
-        content: reply,
-        createdAt: new Date(),
-      };
-      setMessages((previous) => [...previous, fallbackMessage]);
-    } finally {
-      setIsTyping(false);
+      const assistantMessage = createChatMessage("assistant", reply);
+      setChatTabs((previous) =>
+        previous.map((tab) =>
+          tab.id === targetTabId
+            ? {
+                ...tab,
+                messages: [...tab.messages, assistantMessage],
+                isTyping: false,
+              }
+            : tab,
+        ),
+      );
     }
   }
 

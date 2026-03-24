@@ -37,7 +37,7 @@ export const sendMessageToAPI = async (messages: ChatMessage[]): Promise<string>
     const systemMessage = messages.find(msg => msg.role === 'system')?.content;
     
     // Convert messages to Gemini format
-    let geminiContents: GeminiContent[] = messages
+    const geminiContents: GeminiContent[] = messages
       .filter(msg => msg.role !== 'system') // Remove system messages
       .map(msg => ({
         parts: [{ text: msg.content }],
