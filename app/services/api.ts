@@ -1,4 +1,4 @@
-const API_KEY = 'AIzaSyAzsKHM6TADTiPFsaY55gFGwbJHnKtQTdc';
+const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
 const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 export interface ChatMessage {
@@ -56,7 +56,7 @@ export const sendMessageToAPI = async (messages: ChatMessage[]): Promise<string>
       contents: geminiContents,
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 1000,
+        maxOutputTokens: 50000,
       }
     };
 
