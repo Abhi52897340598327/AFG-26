@@ -1,67 +1,75 @@
-# Stuck Model Runtime
+# Stuck Sentiment Model
 
-## What this module does
-- Runs a 5-question adaptive diagnostic flow.
-- Classifies one of 6 stuck types with confidence.
-- Returns a type-specific intervention plan.
-- Builds trend insights from historical sessions.
+`stuckSentimentModel.ts` is a domain-specific sentiment and paralysis diagnosis engine for academic work.
 
-## Main entry point
-- `runStuckModel(request)` in `model/engine.ts`
+## What it does
+
+- Classifies one of 6 stuck types:
+  - `confusion_stuck`
+  - `ambiguity_stuck`
+  - `fear_stuck`
+  - `overwhelm_stuck`
+  - `exhaustion_stuck`
+  - `perfection_loop_stuck`
+- Scores emotional state (fear, shame, overwhelm, mental energy, valence, arousal).
+- Detects common thought distortions from student self-talk.
+- Returns a safe intervention plan with a tiny next step and timer.
+- Produces weekly pattern insights from session history.
+- Enforces guardrails: no cheating, no assignment completion on behalf of student.
 
 ## API route
-- `POST /api/stuck/diagnose`
 
-### Example payload
+POST `/api/stuck/diagnose`
+
+Example request body:
+
 ```json
 {
+  "subject": "chemistry",
+  "assignmentType": "problem set",
+  "assignmentText": "Complete questions 1-10 with full steps.",
+  "studentStatement": "I keep staring at it and feel like if I do this wrong my grade drops.",
+  "selfTalk": ["If this is bad, I am bad at science."],
   "answers": {
     "understandsQuestion": "yes",
-    "canSubmitBadInFiveMinutes": "no",
-    "strongestEmotion": "anxious",
-    "taskScope": "small_clear",
+    "canSubmitBadIn5Min": "no",
+    "strongestEmotion": "scared",
+    "taskScope": "large",
     "gradeWorry": "high"
   },
-  "context": {
-    "subject": "Chemistry",
-    "assignmentType": "Homework",
-    "timeStuckMinutes": 45,
-    "tasksOpenCount": 3,
-    "energyLevel": 3,
-    "panicLevel": 4
-  },
-  "history": []
-}
-```
-
-### Example response shape
-```json
-{
-  "status": "diagnosed",
-  "diagnosis": {
-    "primaryType": "fear",
-    "confidence": 0.82,
-    "rankedTypes": [],
-    "summary": "Fear Stuck detected (82% confidence)."
-  },
-  "plan": {
-    "stuckType": "fear",
-    "headline": "You are protecting your identity, not avoiding work.",
-    "firstAction": "Say: 'My grade is data, not identity.' Then open question 1. (Chemistry)"
-  },
-  "insights": [],
-  "profile": {
-    "totalSessions": 0,
-    "byType": {
-      "confusion": 0,
-      "ambiguity": 0,
-      "fear": 0,
-      "overwhelm": 0,
-      "exhaustion": 0,
-      "perfection_loop": 0
-    },
-    "bySubjectAndType": {},
-    "averageTimeStuckMinutes": 0
+  "signals": {
+    "minutesStuck": 45,
+    "tabSwitching": true,
+    "anxietySpikeOnOpen": true,
+    "shameLevel": 7,
+    "fearLevel": 9
   }
 }
 ```
+
+Example response (shape):
+
+```json
+{
+  "diagnosis": {
+    "primaryType": "fear_stuck",
+    "confidence": 0.84,
+    "typeScores": {},
+    "sentiment": {},
+    "distortions": [],
+    "intervention": {},
+    "safetyFlags": [],
+    "guardrails": []
+  },
+  "adaptiveQuestions": []
+}
+```
+
+## Core functions
+
+- `diagnoseStuck(input)` -> full diagnosis object.
+- `generateAdaptiveQuestions(prior)` -> 5-question adaptive check-in flow.
+- `generateClarificationQuestions(text, subject)` -> question prompts for confusion cases.
+- `rephraseAssignmentInstructions(text)` -> assignment simplification helper.
+- `buildSessionRecord(input, diagnosis, outcome)` -> normalized session event.
+- `buildWeeklyInsights(sessions)` -> trend and risk summary.

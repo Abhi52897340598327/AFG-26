@@ -435,31 +435,31 @@ export default function StuckApp() {
   const firstAction = plan?.firstAction ?? null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-emerald-950 text-emerald-50">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-8 md:py-8">
-        <header className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 backdrop-blur">
+        <header className="rounded-2xl border border-emerald-900 bg-emerald-950/70 p-4 backdrop-blur">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
               <Image
-                src="/images/hero-pattern.svg"
-                alt="Stuck hero"
-                width={72}
-                height={72}
-                className="rounded-xl border border-slate-700"
+                src="/images/stuck-logo.png"
+                alt="Unstuck logo"
+                width={126}
+                height={102}
+                className="h-16 w-auto rounded-xl border border-emerald-800 bg-white p-1"
               />
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-                  Stuck
+                  Unstuck
                 </h1>
-                <p className="text-sm text-slate-300 md:text-base">
-                  Diagnostic + intervention engine for academic paralysis.
+                <p className="text-sm text-emerald-200 md:text-base">
+                  App for academic paralysis. 
                 </p>
               </div>
             </div>
           </div>
         </header>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+        <div className="rounded-2xl border border-emerald-900 bg-emerald-950/70 p-4">
           <div className="flex flex-wrap gap-2">
             {(Object.keys(TAB_LABELS) as AppTab[]).map((tabKey) => {
               const disabled =
@@ -474,8 +474,8 @@ export default function StuckApp() {
                   disabled={disabled}
                   className={`rounded-lg border px-3 py-2 text-sm ${
                     selected
-                      ? "border-cyan-400 bg-cyan-500/20"
-                      : "border-slate-700 hover:border-slate-500"
+                      ? "border-lime-300 bg-lime-300/20"
+                      : "border-emerald-800 hover:border-lime-500"
                   } disabled:cursor-not-allowed disabled:opacity-50`}
                 >
                   {TAB_LABELS[tabKey]}
@@ -504,12 +504,12 @@ export default function StuckApp() {
           </div>
         ) : null}
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 md:p-6">
+        <section className="rounded-2xl border border-emerald-900 bg-emerald-950/70 p-5 md:p-6">
           {activeTab === "home" ? (
             <div className="space-y-6">
               <div className="space-y-3">
                 <h2 className="text-xl font-semibold">Start When You Freeze</h2>
-                <p className="max-w-3xl text-sm text-slate-300 md:text-base">
+                <p className="max-w-3xl text-sm text-emerald-200 md:text-base">
                   The UI is now organized into tabs. Set details in{" "}
                   <strong>Context</strong>, answer the adaptive questions in{" "}
                   <strong>Diagnosis</strong>, then follow your intervention in{" "}
@@ -517,13 +517,13 @@ export default function StuckApp() {
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+              <div className="rounded-xl border border-emerald-900 bg-emerald-950/60 p-4">
                 <Image
                   src="/images/diagnosis-flow.svg"
                   alt="Diagnosis flow diagram"
                   width={920}
                   height={220}
-                  className="h-auto w-full rounded-lg border border-slate-800"
+                  className="h-auto w-full rounded-lg border border-emerald-900"
                 />
               </div>
 
@@ -532,14 +532,14 @@ export default function StuckApp() {
                   type="button"
                   onClick={beginDiagnosis}
                   disabled={loading}
-                  className="rounded-xl bg-cyan-400 px-6 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl bg-lime-300 px-6 py-3 text-sm font-semibold text-emerald-950 hover:bg-lime-200 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? "Starting..." : "I'M STUCK"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("context")}
-                  className="rounded-xl border border-slate-700 px-6 py-3 text-sm hover:border-slate-500"
+                  className="rounded-xl border border-emerald-800 px-6 py-3 text-sm hover:border-lime-500"
                 >
                   Go To Context Tab
                 </button>
@@ -558,7 +558,7 @@ export default function StuckApp() {
                       excessiveEditing: false,
                     }))
                   }
-                  className="rounded-xl border border-slate-700 px-6 py-3 text-sm hover:border-slate-500"
+                  className="rounded-xl border border-emerald-800 px-6 py-3 text-sm hover:border-lime-500"
                 >
                   Load Demo Context
                 </button>
@@ -568,12 +568,12 @@ export default function StuckApp() {
 
           {activeTab === "context" ? (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-200">
                 Session Context
               </h3>
 
               <div>
-                <label htmlFor="subject" className="text-xs text-slate-400">
+                <label htmlFor="subject" className="text-xs text-emerald-300">
                   Subject
                 </label>
                 <input
@@ -586,12 +586,12 @@ export default function StuckApp() {
                     }))
                   }
                   placeholder="e.g. Chemistry"
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none ring-cyan-300 focus:ring"
+                  className="mt-1 w-full rounded-lg border border-emerald-800 bg-emerald-950 px-3 py-2 text-sm outline-none ring-lime-300 focus:ring"
                 />
               </div>
 
               <div>
-                <label htmlFor="assignment" className="text-xs text-slate-400">
+                <label htmlFor="assignment" className="text-xs text-emerald-300">
                   Assignment Type
                 </label>
                 <input
@@ -604,7 +604,7 @@ export default function StuckApp() {
                     }))
                   }
                   placeholder="Homework / Essay / Lab"
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none ring-cyan-300 focus:ring"
+                  className="mt-1 w-full rounded-lg border border-emerald-800 bg-emerald-950 px-3 py-2 text-sm outline-none ring-lime-300 focus:ring"
                 />
                 <div className="mt-2 flex flex-wrap gap-2">
                   {["Homework", "Essay", "Lab", "Problem Set", "Exam Prep"].map(
@@ -618,7 +618,7 @@ export default function StuckApp() {
                             assignmentType: preset,
                           }))
                         }
-                        className="rounded-md border border-slate-700 px-2 py-1 text-xs hover:border-slate-500"
+                        className="rounded-md border border-emerald-800 px-2 py-1 text-xs hover:border-lime-500"
                       >
                         {preset}
                       </button>
@@ -628,7 +628,7 @@ export default function StuckApp() {
               </div>
 
               <div>
-                <p className="text-xs text-slate-400">Time Stuck (minutes)</p>
+                <p className="text-xs text-emerald-300">Time Stuck (minutes)</p>
                 <div className="mt-1 flex items-center gap-2">
                   <button
                     type="button"
@@ -638,7 +638,7 @@ export default function StuckApp() {
                         timeStuckMinutes: Math.max(0, previous.timeStuckMinutes - 5),
                       }))
                     }
-                    className="rounded-md border border-slate-700 px-3 py-1 text-sm hover:border-slate-500"
+                    className="rounded-md border border-emerald-800 px-3 py-1 text-sm hover:border-lime-500"
                   >
                     -
                   </button>
@@ -653,7 +653,7 @@ export default function StuckApp() {
                         timeStuckMinutes: Math.min(300, previous.timeStuckMinutes + 5),
                       }))
                     }
-                    className="rounded-md border border-slate-700 px-3 py-1 text-sm hover:border-slate-500"
+                    className="rounded-md border border-emerald-800 px-3 py-1 text-sm hover:border-lime-500"
                   >
                     +
                   </button>
@@ -661,7 +661,7 @@ export default function StuckApp() {
               </div>
 
               <div>
-                <p className="text-xs text-slate-400">Open Tasks</p>
+                <p className="text-xs text-emerald-300">Open Tasks</p>
                 <div className="mt-1 flex items-center gap-2">
                   <button
                     type="button"
@@ -671,7 +671,7 @@ export default function StuckApp() {
                         tasksOpenCount: Math.max(1, previous.tasksOpenCount - 1),
                       }))
                     }
-                    className="rounded-md border border-slate-700 px-3 py-1 text-sm hover:border-slate-500"
+                    className="rounded-md border border-emerald-800 px-3 py-1 text-sm hover:border-lime-500"
                   >
                     -
                   </button>
@@ -686,7 +686,7 @@ export default function StuckApp() {
                         tasksOpenCount: Math.min(20, previous.tasksOpenCount + 1),
                       }))
                     }
-                    className="rounded-md border border-slate-700 px-3 py-1 text-sm hover:border-slate-500"
+                    className="rounded-md border border-emerald-800 px-3 py-1 text-sm hover:border-lime-500"
                   >
                     +
                   </button>
@@ -694,7 +694,7 @@ export default function StuckApp() {
               </div>
 
               <div>
-                <p className="text-xs text-slate-400">Energy Level</p>
+                <p className="text-xs text-emerald-300">Energy Level</p>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {[1, 2, 3, 4, 5].map((value) => (
                     <button
@@ -708,8 +708,8 @@ export default function StuckApp() {
                       }
                       className={`rounded-md border px-2 py-1 text-xs ${
                         context.energyLevel === value
-                          ? "border-cyan-400 bg-cyan-500/20"
-                          : "border-slate-700 hover:border-slate-500"
+                          ? "border-lime-300 bg-lime-300/20"
+                          : "border-emerald-800 hover:border-lime-500"
                       }`}
                     >
                       {value}
@@ -719,7 +719,7 @@ export default function StuckApp() {
               </div>
 
               <div>
-                <p className="text-xs text-slate-400">Panic Level</p>
+                <p className="text-xs text-emerald-300">Panic Level</p>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {[1, 2, 3, 4, 5].map((value) => (
                     <button
@@ -733,8 +733,8 @@ export default function StuckApp() {
                       }
                       className={`rounded-md border px-2 py-1 text-xs ${
                         context.panicLevel === value
-                          ? "border-cyan-400 bg-cyan-500/20"
-                          : "border-slate-700 hover:border-slate-500"
+                          ? "border-lime-300 bg-lime-300/20"
+                          : "border-emerald-800 hover:border-lime-500"
                       }`}
                     >
                       {value}
@@ -754,8 +754,8 @@ export default function StuckApp() {
                   }
                   className={`rounded-md border px-3 py-2 text-xs text-left ${
                     context.repeatedRereading
-                      ? "border-cyan-400 bg-cyan-500/20"
-                      : "border-slate-700 hover:border-slate-500"
+                      ? "border-lime-300 bg-lime-300/20"
+                      : "border-emerald-800 hover:border-lime-500"
                   }`}
                 >
                   Repeated rereading: {context.repeatedRereading ? "Yes" : "No"}
@@ -771,8 +771,8 @@ export default function StuckApp() {
                   }
                   className={`rounded-md border px-3 py-2 text-xs text-left ${
                     context.excessiveEditing
-                      ? "border-cyan-400 bg-cyan-500/20"
-                      : "border-slate-700 hover:border-slate-500"
+                      ? "border-lime-300 bg-lime-300/20"
+                      : "border-emerald-800 hover:border-lime-500"
                   }`}
                 >
                   Excessive editing: {context.excessiveEditing ? "Yes" : "No"}
@@ -784,14 +784,14 @@ export default function StuckApp() {
                   type="button"
                   onClick={beginDiagnosis}
                   disabled={loading}
-                  className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-lg bg-lime-300 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-lime-200 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? "Starting..." : "Start Diagnosis"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("diagnosis")}
-                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500"
+                  className="rounded-lg border border-emerald-800 px-4 py-2 text-sm hover:border-lime-500"
                 >
                   Open Diagnosis Tab
                 </button>
@@ -801,32 +801,32 @@ export default function StuckApp() {
 
           {activeTab === "diagnosis" ? (
             <div className="space-y-5">
-              <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                <div className="flex items-center justify-between text-xs text-slate-400">
+              <div className="flex flex-col gap-3 rounded-xl border border-emerald-900 bg-emerald-950/60 p-4">
+                <div className="flex items-center justify-between text-xs text-emerald-300">
                   <span>Adaptive Questionnaire</span>
                   <span>
                     {answeredCount}/{questionQueue.length} answered
                   </span>
                 </div>
-                <div className="h-2 rounded-full bg-slate-800">
+                <div className="h-2 rounded-full bg-emerald-900">
                   <div
-                    className="h-full rounded-full bg-cyan-400 transition-all"
+                    className="h-full rounded-full bg-lime-300 transition-all"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
               </div>
 
               {currentQuestion ? (
-                <div className="space-y-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4 md:p-5">
+                <div className="space-y-4 rounded-xl border border-emerald-900 bg-emerald-950/60 p-4 md:p-5">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-cyan-300">
+                    <p className="text-xs uppercase tracking-wide text-lime-200">
                       Question {currentQuestionIndex + 1} of {questionQueue.length}
                     </p>
                     <h3 className="mt-2 text-lg font-semibold">
                       {currentQuestion.prompt}
                     </h3>
                     {currentQuestion.helperText ? (
-                      <p className="mt-1 text-sm text-slate-400">
+                      <p className="mt-1 text-sm text-emerald-300">
                         {currentQuestion.helperText}
                       </p>
                     ) : null}
@@ -845,8 +845,8 @@ export default function StuckApp() {
                           }
                           className={`rounded-lg border px-4 py-3 text-left text-sm transition ${
                             isSelected
-                              ? "border-cyan-400 bg-cyan-500/20"
-                              : "border-slate-700 bg-slate-900 hover:border-slate-500"
+                              ? "border-lime-300 bg-lime-300/20"
+                              : "border-emerald-800 bg-emerald-900 hover:border-lime-500"
                           }`}
                         >
                           {option.label}
@@ -860,7 +860,7 @@ export default function StuckApp() {
                       type="button"
                       onClick={handlePreviousQuestion}
                       disabled={currentQuestionIndex === 0 || loading}
-                      className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-lg border border-emerald-800 px-4 py-2 text-sm hover:border-lime-500 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Back
                     </button>
@@ -868,35 +868,35 @@ export default function StuckApp() {
                       type="button"
                       onClick={handleNextQuestion}
                       disabled={loading}
-                      className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-lg bg-lime-300 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-lime-200 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {loading ? "Thinking..." : "Next"}
                     </button>
                     <button
                       type="button"
                       onClick={resetToHome}
-                      className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500"
+                      className="rounded-lg border border-emerald-800 px-4 py-2 text-sm hover:border-lime-500"
                     >
                       Restart
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
+                <div className="rounded-xl border border-emerald-900 bg-emerald-950/60 p-4 text-sm text-emerald-200">
                   <p>No active diagnosis session yet.</p>
                   <button
                     type="button"
                     onClick={beginDiagnosis}
                     disabled={loading}
-                    className="mt-3 rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-3 rounded-lg bg-lime-300 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-lime-200 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {loading ? "Starting..." : "Start Diagnosis"}
                   </button>
                 </div>
               )}
 
-              <div className="grid gap-2 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                <p className="text-xs uppercase tracking-wide text-slate-400">
+              <div className="grid gap-2 rounded-xl border border-emerald-900 bg-emerald-950/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-emerald-300">
                   Question Navigator
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -911,10 +911,10 @@ export default function StuckApp() {
                         onClick={() => setCurrentQuestionIndex(index)}
                         className={`rounded-md border px-3 py-1.5 text-xs ${
                           selected
-                            ? "border-cyan-400 bg-cyan-500/20"
+                            ? "border-lime-300 bg-lime-300/20"
                             : answered
-                              ? "border-emerald-600 bg-emerald-900/20"
-                              : "border-slate-700 hover:border-slate-500"
+                              ? "border-lime-500 bg-lime-900/20"
+                              : "border-emerald-800 hover:border-lime-500"
                         }`}
                       >
                         {index + 1}. {QUESTION_TITLES[question.id]}
@@ -930,23 +930,23 @@ export default function StuckApp() {
             <div className="space-y-5">
               {diagnosis && plan ? (
                 <>
-                  <div className="rounded-xl border border-cyan-700/50 bg-cyan-950/30 p-4">
-                    <p className="text-xs uppercase tracking-wide text-cyan-300">
+                  <div className="rounded-xl border border-lime-600/50 bg-lime-950/30 p-4">
+                    <p className="text-xs uppercase tracking-wide text-lime-200">
                       Diagnosis
                     </p>
                     <h2 className="mt-1 text-2xl font-semibold">
                       {STUCK_TYPE_LABELS[diagnosis.primaryType]}
                     </h2>
-                    <p className="mt-1 text-sm text-slate-300">
+                    <p className="mt-1 text-sm text-emerald-200">
                       Confidence: {Math.round(diagnosis.confidence * 100)}%
                     </p>
-                    <p className="mt-3 text-sm text-slate-200">
+                    <p className="mt-3 text-sm text-emerald-100">
                       {diagnosis.summary}
                     </p>
                   </div>
 
-                  <div className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                    <h3 className="text-sm font-semibold text-slate-200">
+                  <div className="grid gap-3 rounded-xl border border-emerald-900 bg-emerald-950/60 p-4">
+                    <h3 className="text-sm font-semibold text-emerald-100">
                       Ranked Types
                     </h3>
                     {diagnosis.rankedTypes.map((item) => (
@@ -955,9 +955,9 @@ export default function StuckApp() {
                           <span>{STUCK_TYPE_LABELS[item.type]}</span>
                           <span>{Math.round(item.normalized * 100)}%</span>
                         </div>
-                        <div className="h-2 rounded-full bg-slate-800">
+                        <div className="h-2 rounded-full bg-emerald-900">
                           <div
-                            className="h-full rounded-full bg-cyan-400"
+                            className="h-full rounded-full bg-lime-300"
                             style={{ width: `${Math.round(item.normalized * 100)}%` }}
                           />
                         </div>
@@ -965,13 +965,13 @@ export default function StuckApp() {
                     ))}
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                  <div className="rounded-xl border border-emerald-900 bg-emerald-950/60 p-4">
                     <h3 className="text-lg font-semibold">{plan.headline}</h3>
-                    <p className="mt-2 text-sm text-slate-300">{plan.whyThisWorks}</p>
+                    <p className="mt-2 text-sm text-emerald-200">{plan.whyThisWorks}</p>
                   </div>
 
-                  <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                    <h3 className="text-sm font-semibold text-slate-200">
+                  <div className="space-y-3 rounded-xl border border-emerald-900 bg-emerald-950/60 p-4">
+                    <h3 className="text-sm font-semibold text-emerald-100">
                       Intervention Steps
                     </h3>
 
@@ -984,11 +984,11 @@ export default function StuckApp() {
                           key={step.id}
                           className={`rounded-lg border p-3 ${
                             completed
-                              ? "border-emerald-600 bg-emerald-900/20"
-                              : "border-slate-700"
+                              ? "border-lime-500 bg-lime-900/20"
+                              : "border-emerald-800"
                           }`}
                         >
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-emerald-300">
                             Step {index + 1} - {step.minutes} min
                           </p>
                           <p className="mt-1 text-sm">{step.instruction}</p>
@@ -996,14 +996,14 @@ export default function StuckApp() {
                             <button
                               type="button"
                               onClick={() => toggleStepComplete(step.id)}
-                              className="rounded-md border border-slate-600 px-3 py-1.5 text-xs hover:border-slate-400"
+                              className="rounded-md border border-emerald-700 px-3 py-1.5 text-xs hover:border-emerald-500"
                             >
                               {completed ? "Undo Complete" : "Mark Complete"}
                             </button>
                             <button
                               type="button"
                               onClick={() => startStepTimer(step.id, step.minutes)}
-                              className="rounded-md border border-cyan-600 px-3 py-1.5 text-xs text-cyan-200 hover:border-cyan-400"
+                              className="rounded-md border border-lime-400 px-3 py-1.5 text-xs text-lime-100 hover:border-lime-300"
                             >
                               {timerActive ? "Restart Timer" : "Start Timer"}
                             </button>
@@ -1013,15 +1013,15 @@ export default function StuckApp() {
                     })}
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                  <div className="rounded-xl border border-emerald-900 bg-emerald-950/60 p-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-slate-200">Timer</p>
+                      <p className="text-sm font-semibold text-emerald-100">Timer</p>
                       {activeStep ? (
-                        <span className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300">
+                        <span className="rounded-md border border-emerald-800 px-2 py-1 text-xs text-emerald-200">
                           Active: {activeStep.id}
                         </span>
                       ) : (
-                        <span className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300">
+                        <span className="rounded-md border border-emerald-800 px-2 py-1 text-xs text-emerald-200">
                           No active step
                         </span>
                       )}
@@ -1036,22 +1036,22 @@ export default function StuckApp() {
                         type="button"
                         onClick={toggleTimerRunning}
                         disabled={!activeStep}
-                        className="rounded-md border border-slate-600 px-3 py-1.5 text-xs hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-md border border-emerald-700 px-3 py-1.5 text-xs hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {timerRunning ? "Pause" : "Resume"}
                       </button>
                       <button
                         type="button"
                         onClick={resetTimer}
-                        className="rounded-md border border-slate-600 px-3 py-1.5 text-xs hover:border-slate-400"
+                        className="rounded-md border border-emerald-700 px-3 py-1.5 text-xs hover:border-emerald-500"
                       >
                         Reset Timer
                       </button>
                     </div>
                   </div>
 
-                  <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                    <h3 className="text-sm font-semibold text-slate-200">Outcome</h3>
+                  <div className="space-y-3 rounded-xl border border-emerald-900 bg-emerald-950/60 p-4">
+                    <h3 className="text-sm font-semibold text-emerald-100">Outcome</h3>
                     <div className="flex flex-wrap gap-2">
                       {(Object.keys(OUTCOME_LABELS) as SessionOutcome[]).map(
                         (outcome) => (
@@ -1061,8 +1061,8 @@ export default function StuckApp() {
                             onClick={() => setSelectedOutcome(outcome)}
                             className={`rounded-md border px-3 py-1.5 text-xs ${
                               selectedOutcome === outcome
-                                ? "border-cyan-400 bg-cyan-500/20"
-                                : "border-slate-700 hover:border-slate-500"
+                                ? "border-lime-300 bg-lime-300/20"
+                                : "border-emerald-800 hover:border-lime-500"
                             }`}
                           >
                             {OUTCOME_LABELS[outcome]}
@@ -1076,7 +1076,7 @@ export default function StuckApp() {
                         type="button"
                         onClick={saveSession}
                         disabled={saving}
-                        className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="rounded-lg bg-lime-300 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-lime-200 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {saving ? "Saving..." : "Save Session"}
                       </button>
@@ -1084,14 +1084,14 @@ export default function StuckApp() {
                         type="button"
                         onClick={beginDiagnosis}
                         disabled={loading}
-                        className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="rounded-lg border border-emerald-800 px-4 py-2 text-sm hover:border-lime-500 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         New Diagnosis
                       </button>
                       <button
                         type="button"
                         onClick={() => setActiveTab("insights")}
-                        className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500"
+                        className="rounded-lg border border-emerald-800 px-4 py-2 text-sm hover:border-lime-500"
                       >
                         View Insights Tab
                       </button>
@@ -1099,7 +1099,7 @@ export default function StuckApp() {
                   </div>
                 </>
               ) : (
-                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
+                <div className="rounded-xl border border-emerald-900 bg-emerald-950/60 p-4 text-sm text-emerald-200">
                   No diagnosis found. Open the Diagnosis tab and run the questionnaire.
                 </div>
               )}
@@ -1108,8 +1108,8 @@ export default function StuckApp() {
 
           {activeTab === "insights" ? (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+              <div className="rounded-2xl border border-emerald-900 bg-emerald-950/70 p-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-200">
                   Insights
                 </h3>
                 {insights.length > 0 ? (
@@ -1117,9 +1117,9 @@ export default function StuckApp() {
                     {insights.map((insight) => (
                       <div
                         key={insight.key}
-                        className="rounded-lg border border-slate-700 bg-slate-950/60 p-3"
+                        className="rounded-lg border border-emerald-800 bg-emerald-950/60 p-3"
                       >
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-emerald-300">
                           Confidence: {insight.confidence}
                         </p>
                         <p className="mt-1 text-sm">{insight.message}</p>
@@ -1127,14 +1127,14 @@ export default function StuckApp() {
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm text-slate-400">
+                  <p className="mt-3 text-sm text-emerald-300">
                     Save sessions to generate behavioral insights.
                   </p>
                 )}
 
                 {profile ? (
-                  <div className="mt-4 rounded-lg border border-slate-700 bg-slate-950/60 p-3">
-                    <p className="text-xs text-slate-400">Profile Summary</p>
+                  <div className="mt-4 rounded-lg border border-emerald-800 bg-emerald-950/60 p-3">
+                    <p className="text-xs text-emerald-300">Profile Summary</p>
                     <p className="mt-1 text-sm">Sessions: {profile.totalSessions}</p>
                     <p className="text-sm">
                       Avg stuck time: {Math.round(profile.averageTimeStuckMinutes)} min
@@ -1147,7 +1147,7 @@ export default function StuckApp() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("history")}
-                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500"
+                  className="rounded-lg border border-emerald-800 px-4 py-2 text-sm hover:border-lime-500"
                 >
                   Open History Tab
                 </button>
@@ -1155,7 +1155,7 @@ export default function StuckApp() {
                   type="button"
                   onClick={() => setActiveTab("result")}
                   disabled={!diagnosis || !plan}
-                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg border border-emerald-800 px-4 py-2 text-sm hover:border-lime-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Back To Plan Tab
                 </button>
@@ -1165,8 +1165,8 @@ export default function StuckApp() {
 
           {activeTab === "history" ? (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+              <div className="rounded-2xl border border-emerald-900 bg-emerald-950/70 p-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-200">
                   Recent Sessions
                 </h3>
 
@@ -1188,9 +1188,9 @@ export default function StuckApp() {
                           );
                           setActiveTab("context");
                         }}
-                        className="w-full rounded-lg border border-slate-700 bg-slate-950/60 p-3 text-left hover:border-slate-500"
+                        className="w-full rounded-lg border border-emerald-800 bg-emerald-950/60 p-3 text-left hover:border-lime-500"
                       >
-                        <p className="text-xs text-slate-400">{session.subject}</p>
+                        <p className="text-xs text-emerald-300">{session.subject}</p>
                         <p className="text-sm">
                           {STUCK_TYPE_LABELS[session.stuckType]} -{" "}
                           {OUTCOME_LABELS[session.outcome]}
@@ -1199,7 +1199,7 @@ export default function StuckApp() {
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm text-slate-400">
+                  <p className="mt-3 text-sm text-emerald-300">
                     No saved sessions yet.
                   </p>
                 )}
@@ -1209,14 +1209,14 @@ export default function StuckApp() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("insights")}
-                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500"
+                  className="rounded-lg border border-emerald-800 px-4 py-2 text-sm hover:border-lime-500"
                 >
                   Open Insights Tab
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("context")}
-                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:border-slate-500"
+                  className="rounded-lg border border-emerald-800 px-4 py-2 text-sm hover:border-lime-500"
                 >
                   Open Context Tab
                 </button>
