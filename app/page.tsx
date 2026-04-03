@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import SideChatbot from "@/app/components/SideChatbot";
 import type {
   AdaptiveQuestion,
   DiagnoseResponse,
@@ -19,7 +18,6 @@ import type {
 
 type AppTab =
   | "home"
-  | "context"
   | "diagnosis"
   | "result"
   | "insights"
@@ -53,7 +51,6 @@ const OUTCOME_LABELS: Record<SessionOutcome, string> = {
 
 const TAB_LABELS: Record<AppTab, string> = {
   home: "Home",
-  context: "Context",
   diagnosis: "Diagnosis",
   result: "Plan",
   insights: "Insights",
@@ -172,7 +169,6 @@ export default function StuckApp() {
   const [errorMessage, setErrorMessage] = useState("");
   const [notice, setNotice] = useState("");
   const [historyHydrated, setHistoryHydrated] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
 
   const currentQuestion = questionQueue[currentQuestionIndex] ?? null;
 
@@ -510,8 +506,7 @@ export default function StuckApp() {
               <div className="space-y-3">
                 <h2 className="text-xl font-semibold">Start When You Freeze</h2>
                 <p className="max-w-3xl text-sm text-emerald-200 md:text-base">
-                  The UI is now organized into tabs. Set details in{" "}
-                  <strong>Context</strong>, answer the adaptive questions in{" "}
+                  Answer the adaptive questions in{" "}
                   <strong>Diagnosis</strong>, then follow your intervention in{" "}
                   <strong>Plan</strong>.
                 </p>
@@ -538,13 +533,6 @@ export default function StuckApp() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveTab("context")}
-                  className="rounded-xl border border-emerald-800 px-6 py-3 text-sm hover:border-lime-500"
-                >
-                  Go To Context Tab
-                </button>
-                <button
-                  type="button"
                   onClick={() =>
                     setContext((previous) => ({
                       ...previous,
@@ -561,239 +549,6 @@ export default function StuckApp() {
                   className="rounded-xl border border-emerald-800 px-6 py-3 text-sm hover:border-lime-500"
                 >
                   Load Demo Context
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {activeTab === "context" ? (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-200">
-                Session Context
-              </h3>
-
-              <div>
-                <label htmlFor="subject" className="text-xs text-emerald-300">
-                  Subject
-                </label>
-                <input
-                  id="subject"
-                  value={context.subject}
-                  onChange={(event) =>
-                    setContext((previous) => ({
-                      ...previous,
-                      subject: event.target.value,
-                    }))
-                  }
-                  placeholder="e.g. Chemistry"
-                  className="mt-1 w-full rounded-lg border border-emerald-800 bg-emerald-950 px-3 py-2 text-sm outline-none ring-lime-300 focus:ring"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="assignment" className="text-xs text-emerald-300">
-                  Assignment Type
-                </label>
-                <input
-                  id="assignment"
-                  value={context.assignmentType}
-                  onChange={(event) =>
-                    setContext((previous) => ({
-                      ...previous,
-                      assignmentType: event.target.value,
-                    }))
-                  }
-                  placeholder="Homework / Essay / Lab"
-                  className="mt-1 w-full rounded-lg border border-emerald-800 bg-emerald-950 px-3 py-2 text-sm outline-none ring-lime-300 focus:ring"
-                />
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {["Homework", "Essay", "Lab", "Problem Set", "Exam Prep"].map(
-                    (preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() =>
-                          setContext((previous) => ({
-                            ...previous,
-                            assignmentType: preset,
-                          }))
-                        }
-                        className="rounded-md border border-emerald-800 px-2 py-1 text-xs hover:border-lime-500"
-                      >
-                        {preset}
-                      </button>
-                    ),
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs text-emerald-300">Time Stuck (minutes)</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setContext((previous) => ({
-                        ...previous,
-                        timeStuckMinutes: Math.max(0, previous.timeStuckMinutes - 5),
-                      }))
-                    }
-                    className="rounded-md border border-emerald-800 px-3 py-1 text-sm hover:border-lime-500"
-                  >
-                    -
-                  </button>
-                  <span className="min-w-14 text-center text-sm">
-                    {context.timeStuckMinutes}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setContext((previous) => ({
-                        ...previous,
-                        timeStuckMinutes: Math.min(300, previous.timeStuckMinutes + 5),
-                      }))
-                    }
-                    className="rounded-md border border-emerald-800 px-3 py-1 text-sm hover:border-lime-500"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs text-emerald-300">Open Tasks</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setContext((previous) => ({
-                        ...previous,
-                        tasksOpenCount: Math.max(1, previous.tasksOpenCount - 1),
-                      }))
-                    }
-                    className="rounded-md border border-emerald-800 px-3 py-1 text-sm hover:border-lime-500"
-                  >
-                    -
-                  </button>
-                  <span className="min-w-14 text-center text-sm">
-                    {context.tasksOpenCount}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setContext((previous) => ({
-                        ...previous,
-                        tasksOpenCount: Math.min(20, previous.tasksOpenCount + 1),
-                      }))
-                    }
-                    className="rounded-md border border-emerald-800 px-3 py-1 text-sm hover:border-lime-500"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs text-emerald-300">Energy Level</p>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {[1, 2, 3, 4, 5].map((value) => (
-                    <button
-                      key={`energy-${value}`}
-                      type="button"
-                      onClick={() =>
-                        setContext((previous) => ({
-                          ...previous,
-                          energyLevel: value as 1 | 2 | 3 | 4 | 5,
-                        }))
-                      }
-                      className={`rounded-md border px-2 py-1 text-xs ${
-                        context.energyLevel === value
-                          ? "border-lime-300 bg-lime-300/20"
-                          : "border-emerald-800 hover:border-lime-500"
-                      }`}
-                    >
-                      {value}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs text-emerald-300">Panic Level</p>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {[1, 2, 3, 4, 5].map((value) => (
-                    <button
-                      key={`panic-${value}`}
-                      type="button"
-                      onClick={() =>
-                        setContext((previous) => ({
-                          ...previous,
-                          panicLevel: value as 1 | 2 | 3 | 4 | 5,
-                        }))
-                      }
-                      className={`rounded-md border px-2 py-1 text-xs ${
-                        context.panicLevel === value
-                          ? "border-lime-300 bg-lime-300/20"
-                          : "border-emerald-800 hover:border-lime-500"
-                      }`}
-                    >
-                      {value}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setContext((previous) => ({
-                      ...previous,
-                      repeatedRereading: !previous.repeatedRereading,
-                    }))
-                  }
-                  className={`rounded-md border px-3 py-2 text-xs text-left ${
-                    context.repeatedRereading
-                      ? "border-lime-300 bg-lime-300/20"
-                      : "border-emerald-800 hover:border-lime-500"
-                  }`}
-                >
-                  Repeated rereading: {context.repeatedRereading ? "Yes" : "No"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setContext((previous) => ({
-                      ...previous,
-                      excessiveEditing: !previous.excessiveEditing,
-                    }))
-                  }
-                  className={`rounded-md border px-3 py-2 text-xs text-left ${
-                    context.excessiveEditing
-                      ? "border-lime-300 bg-lime-300/20"
-                      : "border-emerald-800 hover:border-lime-500"
-                  }`}
-                >
-                  Excessive editing: {context.excessiveEditing ? "Yes" : "No"}
-                </button>
-              </div>
-
-              <div className="flex flex-wrap gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={beginDiagnosis}
-                  disabled={loading}
-                  className="rounded-lg bg-lime-300 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-lime-200 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loading ? "Starting..." : "Start Diagnosis"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("diagnosis")}
-                  className="rounded-lg border border-emerald-800 px-4 py-2 text-sm hover:border-lime-500"
-                >
-                  Open Diagnosis Tab
                 </button>
               </div>
             </div>
@@ -1186,7 +941,7 @@ export default function StuckApp() {
                           setNotice(
                             `Loaded context from ${session.subject} (${session.assignmentType}).`,
                           );
-                          setActiveTab("context");
+                          setActiveTab("home");
                         }}
                         className="w-full rounded-lg border border-emerald-800 bg-emerald-950/60 p-3 text-left hover:border-lime-500"
                       >
@@ -1213,30 +968,12 @@ export default function StuckApp() {
                 >
                   Open Insights Tab
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("context")}
-                  className="rounded-lg border border-emerald-800 px-4 py-2 text-sm hover:border-lime-500"
-                >
-                  Open Context Tab
-                </button>
               </div>
             </div>
           ) : null}
         </section>
       </div>
 
-      <SideChatbot
-        isOpen={chatOpen}
-        onOpen={() => setChatOpen(true)}
-        onClose={() => setChatOpen(false)}
-        subject={context.subject}
-        assignmentType={context.assignmentType}
-        diagnosisLabel={diagnosisLabel}
-        firstAction={firstAction}
-        onOpenDiagnosisTab={() => setActiveTab("diagnosis")}
-        onOpenPlanTab={() => setActiveTab("result")}
-      />
     </div>
   );
 }
