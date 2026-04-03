@@ -288,7 +288,7 @@ export default function StuckApp() {
       if (response.status === "needs_more_answers") {
         setQuestionQueue(response.questionQueue);
         setCurrentQuestionIndex(0);
-        setActiveTab("diagnosis");
+        setActiveTab("questionnaire");
         return;
       }
 
@@ -1062,7 +1062,7 @@ export default function StuckApp() {
             </div>
           ) : null}
 
-          {activeTab === "diagnosis" ? (
+          {activeTab === "questionnaire" ? (
             <div className="space-y-5">
               <div className="flex flex-col gap-3 rounded-xl border border-emerald-900 bg-emerald-950/60 p-4">
                 <div className="flex items-center justify-between text-xs text-emerald-300">
@@ -1480,7 +1480,7 @@ export default function StuckApp() {
         assignmentType={context.assignmentType}
         diagnosisLabel={diagnosisLabel}
         firstAction={firstAction}
-        onOpenDiagnosisTab={() => setActiveTab("diagnosis")}
+        onOpenDiagnosisTab={() => setActiveTab("questionnaire")}
         onOpenPlanTab={() => setActiveTab("result")}
       />
       
